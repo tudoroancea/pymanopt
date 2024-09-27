@@ -190,14 +190,16 @@ class PytorchNumericsBackend(NumericsBackend):
     def prod(self, array: torch.Tensor) -> float:
         return torch.prod(array).item()
 
-    def random_normal(self, size: int) -> torch.Tensor:
-        pass
+    def random_normal(
+        self, loc: float, scale: float, size: Sequence[int]
+    ) -> torch.Tensor:
+        return torch.normal(mean=loc, std=scale, size=size)
 
-    def random_randn(self, size: int) -> torch.Tensor:
-        pass
+    def random_randn(self, *dims: int) -> torch.Tensor:
+        return torch.randn(dims)
 
     def random_uniform(self, size: int) -> torch.Tensor:
-        pass
+        return torch.rand(size)
 
     def real(self, array: torch.Tensor) -> torch.Tensor:
         return torch.real(array)

@@ -1,12 +1,13 @@
-from typing import Sequence
-import packaging.version as pv
+from typing import Any, Sequence
+
 import numpy as np
 import numpy.testing as np_testing
+import packaging.version as pv
 import scipy
 import scipy.linalg
 
-from pymanopt.numerics.core import NumericsBackend
 from pymanopt.numerics.array_t import array_t
+from pymanopt.numerics.core import NumericsBackend
 
 np_array_t = np.ndarray
 
@@ -118,9 +119,7 @@ class NumpyNumericsBackend(NumericsBackend):
     def linalg_matrix_rank(self, array: np_array_t) -> int:
         return np.linalg.matrix_rank(array)
 
-    def linalg_norm(
-        self, array: np_array_t, *args: tuple, **kwargs: dict
-    ) -> np_array_t:
+    def linalg_norm(self, array: np_array_t, *args: Any, **kwargs: Any) -> np_array_t:
         return np.linalg.norm(array)  # type: ignore
 
     def linalg_qr(self, array: np_array_t) -> tuple[np_array_t, np_array_t]:
@@ -135,7 +134,7 @@ class NumpyNumericsBackend(NumericsBackend):
         return scipy.linalg.solve_continuous_lyapunov(array_a, array_q)
 
     def linalg_svd(
-        self, array: np_array_t, *args: tuple, **kwargs: dict
+        self, array: np_array_t, *args: Any, **kwargs: Any
     ) -> tuple[np_array_t, np_array_t, np_array_t]:
         return scipy.linalg.svd(array)
 
@@ -154,11 +153,13 @@ class NumpyNumericsBackend(NumericsBackend):
     def prod(self, array: np_array_t) -> float:
         return np.prod(array)  # type: ignore
 
-    def random_normal(self, size: int) -> np_array_t:
-        return np.random.normal(size=size)
+    def random_normal(
+        self, loc: float, scale: float, size: Sequence[int]
+    ) -> np_array_t:
+        return np.random.normal(loc=loc, scale=scale, size=size)
 
-    def random_randn(self, size: int) -> np_array_t:
-        return np.random.randn(size)
+    def random_randn(self, *dims: int) -> np_array_t:
+        return np.random.randn(*dims)
 
     def random_uniform(self, size: int) -> np_array_t:
         return np.random.uniform(size=size)
@@ -184,7 +185,7 @@ class NumpyNumericsBackend(NumericsBackend):
     def squeeze(self, array: np_array_t) -> np_array_t:
         return np.squeeze(array)
 
-    def sum(self, array: np_array_t, *args: tuple, **kwargs: dict) -> np_array_t:
+    def sum(self, array: np_array_t, *args: Any, **kwargs: Any) -> np_array_t:
         return np.sum(array, *args, **kwargs)  # type: ignore
 
     def tan(self, array: np_array_t) -> np_array_t:

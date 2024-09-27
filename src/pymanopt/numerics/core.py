@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 import numpy as np
 import scipy.special
@@ -218,11 +218,11 @@ class NumericsBackend:
         pass
 
     @not_implemented
-    def random_normal(self, size: int) -> array_t:  # type: ignore
+    def random_normal(self, loc: float, scale: float, size: Sequence[int]) -> array_t:  # type: ignore
         pass
 
     @not_implemented
-    def random_randn(self, size: int) -> array_t:  # type: ignore
+    def random_randn(self, *dims: int) -> array_t:  # type: ignore
         pass
 
     @not_implemented
@@ -284,8 +284,8 @@ class NumericsBackend:
     def sum(
         self,
         array: array_t,  # type: ignore
-        *args: tuple,
-        **kwargs: dict,
+        *args: Any,
+        **kwargs: Any,
     ) -> array_t:  # type: ignore
         pass
 
@@ -309,8 +309,8 @@ class NumericsBackend:
     def trace(
         self,
         array: array_t,  # type:ignore
-        *args: tuple,
-        **kwargs: dict,
+        *args: Any,
+        **kwargs: Any,
     ) -> array_t:  # type: ignore
         pass
 
