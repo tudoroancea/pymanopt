@@ -13,6 +13,22 @@ np_array_t = np.ndarray
 
 
 class NumpyNumericsBackend(NumericsBackend):
+    _dtype: np.dtype
+
+    def __init__(self, dtype=np.float64):
+        self._dtype = dtype
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    def __repr__(self):
+        return f"NumpyNumericsBackend(dtype={self.dtype})"
+
+    ##############################################################################
+    # Numerics functions
+    ##############################################################################
+
     def abs(self, array: np_array_t) -> np_array_t:
         return np.abs(array)
 
@@ -44,7 +60,11 @@ class NumpyNumericsBackend(NumericsBackend):
         return np.argsort(array)
 
     def array(self, array: array_t) -> np_array_t:  # type: ignore
-        return np.array(array)
+        return (
+            array
+            if isinstance(array, np.ndarray) and array.dtype == self.dtype
+            else np.array(array, dtype=self.dtype)
+        )
 
     def assert_allclose(self, array_a: np_array_t, array_b: np_array_t) -> None:
         return np_testing.assert_allclose(array_a, array_b)

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Any, Optional, Sequence
 
@@ -23,8 +24,22 @@ def not_implemented(function):
     return inner
 
 
-class NumericsBackend:
-    #########################################
+class NumericsBackend(ABC):
+    @property
+    @abstractmethod
+    def dtype(self):
+        pass
+
+    @abstractmethod
+    def __repr__(self):
+        pass
+
+    def __eq__(self, other):
+        return repr(self) == repr(other)
+
+    ##############################################################################
+    # Numerics functions
+    ##############################################################################
 
     @not_implemented
     def abs(self, array: array_t) -> array_t:  # type: ignore

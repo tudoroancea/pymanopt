@@ -1,4 +1,5 @@
 from typing import Sequence
+from numbers import Number
 
 import numpy as np
 import numpy.testing as np_testing
@@ -10,6 +11,22 @@ from pymanopt.numerics.core import NumericsBackend
 
 
 class PytorchNumericsBackend(NumericsBackend):
+    _dtype: torch.dtype
+
+    def __init__(self, dtype=torch.float64):
+        self._dtype = dtype
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    def __repr__(self):
+        return f"PytorchNumericsBackend(dtype={self.dtype})"
+
+    ##############################################################################
+    # Numerics functions
+    ##############################################################################
+
     def abs(self, array: torch.Tensor) -> torch.Tensor:
         return torch.abs(array)
 
@@ -41,16 +58,24 @@ class PytorchNumericsBackend(NumericsBackend):
         return torch.argsort(array)
 
     def array(self, array: array_t) -> torch.Tensor:  # type: ignore
-        return torch.tensor(array)
+        return (
+            array
+            if isinstance(array, torch.Tensor) and array.dtype == self.dtype
+            else torch.as_tensor(array, dtype=self.dtype)
+        )
 
     def assert_allclose(self, array_a: torch.Tensor, array_b: torch.Tensor) -> None:
         np_testing.assert_allclose(
             array_a.cpu().detach().numpy(), array_b.cpu().detach().numpy()
         )
 
-    def assert_almost_equal(self, array_a: torch.Tensor, array_b: torch.Tensor) -> None:
+    def assert_almost_equal(
+        self, array_a: torch.Tensor | Number, array_b: torch.Tensor | Number
+    ) -> None:
+        # TODO: check if the intputs are tensors or floats
         np_testing.assert_almost_equal(
-            array_a.cpu().detach().numpy(), array_b.cpu().detach().numpy()
+            array_a if isinstance(array_a, Number) else array_a.item(),
+            array_b if isinstance(array_b, Number) else array_b.item(),
         )
 
     def assert_array_almost_equal(
