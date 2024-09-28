@@ -8,8 +8,6 @@ __all__ = [
     "AVAILABLE_NUMERICS_BACKENDS",
     "array_t",
     "NumericsBackend",
-    "NumpyNumericsBackend",
-    "PytorchNumericsBackend",
 ]
 
 for backend in AVAILABLE_NUMERICS_BACKENDS:

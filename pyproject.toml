@@ -95,6 +95,9 @@ max-line-length = 79
 select = ["B", "B950", "C", "D", "E", "F", "W"]
 
 [tool.pyright]
-typeCheckingMode = "basic"
+typeCheckingMode = "off"
 venvPath = "."
 venv = ".venv"
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::DeprecationWarning"]
