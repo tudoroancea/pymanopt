@@ -9,7 +9,7 @@ on:
 
 jobs:
   tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version:
@@ -21,20 +21,25 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
 
       - name: Set up python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: pyproject.toml
-
-      - name: Checkout
-        uses: actions/checkout@v2
+          # TODO: what to cache here? only the python version?
+          # cache: pip
+          # cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
-        run: pip install -e ".[all,ci]"
+        run: uv pip install -e ".[all,ci]"
+        env:
+          UV_SYSTEM_PYTHON: 1
 
       - name: Run tests
         run: |
@@ -50,7 +55,7 @@ jobs:
 
   finish:
     needs: tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Upload coverage
         uses: coverallsapp/github-action@master
