@@ -90,7 +90,10 @@ def autodiff(backend: str, modules: dict, vars: dict):
 
 def optim(modules: dict, vars: dict):
     optimizer = modules["pymanopt"].optimizers.ConjugateGradient(
-        verbosity=0, beta_rule="PolakRibiere"
+        verbosity=0,
+        beta_rule="PolakRibiere",
+        min_gradient_norm=1e-8,
+        max_iterations=10000,
     )
     res = optimizer.run(vars["problem"]).point
     return res
