@@ -99,15 +99,15 @@ def optim(modules: dict, vars: dict):
 def check_res(backend: str, modules: dict, vars: dict, res: Any):
     np = modules["np"]
     left_singular_vectors, singular_values, right_singular_vectors = res
-
-    if backend == "pytorch":
-        left_singular_vectors = left_singular_vectors.detach().numpy()
-        singular_values = singular_values.detach().numpy()
-        right_singular_vectors = right_singular_vectors.detach().numpy()
-    elif backend == "tensorflow":
-        left_singular_vectors = left_singular_vectors.numpy()
-        singular_values = singular_values.numpy()
-        right_singular_vectors = right_singular_vectors.numpy()
+    if not isinstance(left_singular_vectors, np.ndarray):
+        if backend == "pytorch":
+            left_singular_vectors = left_singular_vectors.detach().numpy()
+            singular_values = singular_values.detach().numpy()
+            right_singular_vectors = right_singular_vectors.detach().numpy()
+        elif backend == "tensorflow":
+            left_singular_vectors = left_singular_vectors.numpy()
+            singular_values = singular_values.numpy()
+            right_singular_vectors = right_singular_vectors.numpy()
 
     low_rank_approximation = (
         left_singular_vectors

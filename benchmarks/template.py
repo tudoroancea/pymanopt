@@ -25,7 +25,6 @@ def run_benchmark(
         default="numpy",
     )
     backend: str = parser.parse_args().backend
-    print(f"Running benchmark {name} with '{backend}' backend")
 
     t = time.perf_counter()
     modules, vars = init(backend)
@@ -41,7 +40,8 @@ def run_benchmark(
 
     check_res(backend, modules, vars, res)
 
-    print(f"========= BENCHMARK SUMMARY: {__file__} =============")
     print(f"init time: {init_time:.3f}s")  # noqa: E231
     print(f"autodiff time: {autodiff_time:.3f}s")  # noqa: E231
     print(f"optim time: {optim_time:.3f}s")  # noqa: E231
+
+    # TODO: export a CSV file with the results

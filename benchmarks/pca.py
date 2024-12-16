@@ -12,9 +12,9 @@ def init(backend: str):
 
     modules = {"np": np, "pymanopt": pymanopt}
 
-    dimension = 20
-    num_samples = 500
-    num_components = 5
+    dimension = 100
+    num_samples = 1000
+    num_components = 10
     samples = np.random.normal(size=(num_samples, dimension)) @ np.diag(
         np.arange(1, dimension + 1)
     )
@@ -113,9 +113,7 @@ def autodiff(backend: str, modules: dict, vars: dict):
 
 
 def optim(modules: dict, vars: dict):
-    optimizer = modules["pymanopt"].optimizers.ConjugateGradient(
-        verbosity=0, min_gradient_norm=1e-8, max_iterations=1e5
-    )
+    optimizer = modules["pymanopt"].optimizers.TrustRegions(verbosity=0)
     res = optimizer.run(vars["problem"]).point
     return res
 
@@ -126,10 +124,13 @@ def check_res(backend: str, modules: dict, vars: dict, res: Any):
     samples = vars["samples"]
     estimated_span_matrix = res
 
-    if backend == "pytorch":
-        estimated_span_matrix = estimated_span_matrix.cpu().detach().numpy()
-    elif backend == "tensorflow":
-        estimated_span_matrix = estimated_span_matrix.numpy()
+    if not isinstance(estimated_span_matrix, np.ndarray):
+        if backend == "pytorch":
+            estimated_span_matrix = (
+                estimated_span_matrix.cpu().detach().numpy()
+            )
+        elif backend == "tensorflow":
+            estimated_span_matrix = estimated_span_matrix.numpy()
 
     estimated_projector = estimated_span_matrix @ estimated_span_matrix.T
 

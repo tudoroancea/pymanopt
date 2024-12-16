@@ -98,10 +98,11 @@ def check_res(backend: str, modules: dict, vars: dict, res: Any):
     np = modules["np"]
     Y = res
 
-    if backend == "pytorch":
-        Y = Y.cpu().detach().numpy()
-    elif backend == "tensorflow":
-        Y = Y.numpy()
+    if not isinstance(Y, np.ndarray):
+        if backend == "pytorch":
+            Y = Y.cpu().detach().numpy()
+        elif backend == "tensorflow":
+            Y = Y.numpy()
 
     X = Y @ Y.T
     maxdot = np.triu(X, 1).max()

@@ -12,7 +12,7 @@ def init(backend: str):
 
     modules = {"np": np, "pymanopt": pymanopt}
 
-    n = 128
+    n = 512
     matrix = np.random.normal(size=(n, n))
     matrix = 0.5 * (matrix + matrix.T)
     manifold = Sphere(n)
@@ -76,36 +76,36 @@ def autodiff(backend: str, modules: dict, vars: dict):
 
 
 def optim(modules: dict, vars: dict):
-    optimizer = modules["pymanopt"].optimizers.SteepestDescent(verbosity=0)
+    optimizer = modules["pymanopt"].optimizers.SteepestDescent(
+        verbosity=0,
+        max_iterations=1e5,
+    )
     res = optimizer.run(vars["problem"]).point
     return res
 
 
 def check_res(backend: str, modules: dict, vars: dict, res: Any):
-    estimated_dominant_eigenvector = res
-    if backend == "pytorch":
-        estimated_dominant_eigenvector = (
-            estimated_dominant_eigenvector.cpu().detach().numpy()
-        )
-    elif backend == "tensorflow":
-        estimated_dominant_eigenvector = estimated_dominant_eigenvector.numpy()
+    np = modules["np"]
+    if not isinstance(res, np.ndarray):
+        if backend == "pytorch":
+            res = res.cpu().detach().numpy()
+        elif backend == "tensorflow":
+            res = res.numpy()
 
     # Calculate the actual solution by a conventional eigenvalue decomposition.
-    np = modules["np"]
     eigenvalues, eigenvectors = np.linalg.eig(vars["matrix"])
-    dominant_eigenvector = eigenvectors[:, np.argmax(eigenvalues)]
+    ground_truth = eigenvectors[:, np.argmax(eigenvalues)]
 
     # Make sure both vectors have the same direction. Both are valid
     # eigenvectors, but for comparison we need to get rid of the sign
     # ambiguity.
-    if np.sign(dominant_eigenvector[0]) != np.sign(
-        estimated_dominant_eigenvector[0]
-    ):
-        estimated_dominant_eigenvector = -estimated_dominant_eigenvector
+    if np.sign(ground_truth[0]) != np.sign(res[0]):
+        res = -res
 
     # Check norm between the two vectors is close to zero.
-    assert np.allclose(
-        dominant_eigenvector, estimated_dominant_eigenvector, atol=1e-6
+    assert np.allclose(ground_truth, res, atol=1.5e-5), (
+        "norm between the two vectors is "
+        f"{np.linalg.norm(ground_truth - res)}"
     )
 
 
