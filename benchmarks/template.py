@@ -30,15 +30,16 @@ def run_benchmark(
     # generate a set of seeds for each run, that will be the same no matter what
     # the backend is
     np.random.seed(127)
-    seeds = np.random.randint(0, 1000, size=(parser.parse_args().iter))
+    seeds = np.random.randint(0, 1000, size=(parser.parse_args().iter, 2))
 
     # run the benchmark for each seed
     for seed in seeds:
-        np.random.seed(seed)
+        np.random.seed(seed[0])
         t = time.perf_counter()
         modules, vars = init(backend)
         init_times.append(time.perf_counter() - t)
 
+        np.random.seed(seed[1])
         t = time.perf_counter()
         autodiff(backend, modules, vars)
         autodiff_times.append(time.perf_counter() - t)
