@@ -1,8 +1,6 @@
 import os
 from typing import Any
 
-from template import run_benchmark
-
 
 def init(backend: str):
     import numpy as np
@@ -110,6 +108,8 @@ def check_res(backend: str, modules: dict, vars: dict, res: Any):
 
 
 if __name__ == "__main__":
+    from template import run_benchmark
+
     run_benchmark(
         f"benchmark_{os.path.basename(__file__)}",
         init,

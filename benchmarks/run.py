@@ -20,16 +20,16 @@ backends = [
     "tensorflow",
 ]
 
+# check we are running in the correct directory
+assert (
+    os.path.basename((basedir := os.path.abspath(os.curdir))) == "benchmarks"
+), f"must be in benchmarks folder, not {basedir}"
+# create output directory
+outdir = os.path.join(basedir, "out2")
+os.makedirs(outdir, exist_ok=True)
+
 
 def setup():
-    # check we are running in the correct directory
-    assert (
-        os.path.basename((basedir := os.path.abspath(os.curdir)))
-        == "benchmarks"
-    ), f"must be in benchmarks folder, not {basedir}"
-    # create output directory
-    outdir = os.path.join(basedir, "out")
-    os.makedirs(outdir, exist_ok=True)
     # find the built pymanopt dev wheel
     wheel = None
     for f in os.listdir((distdir := os.path.join(basedir, "../dist"))):
@@ -38,72 +38,36 @@ def setup():
     assert (
         wheel is not None
     ), f"dev wheel doesn't exist in {os.path.abspath(distdir)}"
-    # setup every benchmark
-    for benchmark, version, backend in product(benchmarks, versions, backends):
-        print(
-            "========== SETUP BENCHMARK:",
-            f"{benchmark}-{version}-{backend} ===========",
-        )
-        if benchmark == "packing_on_the_sphere" and backend == "numpy":
-            continue
-        # create the benchmark folder
-        benchmark_dir = os.path.join(
-            outdir, f"{benchmark}-{version}-{backend}"
-        )
-        os.makedirs(benchmark_dir, exist_ok=True)
-        # create venv
-        venv_dir = os.path.join(benchmark_dir, ".venv")
-        if not os.path.exists(venv_dir):
-            subprocess.run("uv venv", cwd=benchmark_dir, shell=True)
-        # construct the requirements
-        deps = "pymanopt" if version == "master" else wheel
-        if backend == "autograd":
-            deps += "[autograd]"
-        elif backend == "pytorch":
-            deps += "[torch]"
-        elif backend == "jax":
-            deps += "[jax]"
-        elif backend == "tensorflow":
-            deps += "[tensorflow]"
-        # install requirements
-        subprocess.run(
-            f"uv pip install --exact '{deps}'",
-            cwd=benchmark_dir,
-            shell=True,
-            env=os.environ | {"VIRTUAL_ENV": venv_dir},
-        )
-        # symlink the benchmark scripts
-        for f in [f"{benchmark}.py", "template.py"]:
-            if not os.path.exists(os.path.join(benchmark_dir, f)):
-                os.symlink(
-                    os.path.join(basedir, f), os.path.join(benchmark_dir, f)
-                )
+    # create two venvs
+    subprocess.run("uv venv .venv_master", cwd=basedir, shell=True)
+    subprocess.run(
+        "uv pip install --exact pymanopt[backends]",
+        cwd=basedir,
+        shell=True,
+        env=os.environ
+        | {"VIRTUAL_ENV": os.path.join(basedir, ".venv_master")},
+    )
+    subprocess.run("uv venv .venv_dev", cwd=basedir, shell=True)
+    subprocess.run(
+        f"uv pip install --exact {wheel}[backends]",
+        cwd=basedir,
+        shell=True,
+        env=os.environ | {"VIRTUAL_ENV": os.path.join(basedir, ".venv_dev")},
+    )
 
 
 def run_benchmarks():
-    # check we are running in the correct directory
-    assert (
-        os.path.basename((basedir := os.path.abspath(os.curdir)))
-        == "benchmarks"
-    ), f"must be in benchmarks folder, not {basedir}"
-    outdir = os.path.join(basedir, "out")
-    # run every benchmark
-    for benchmark, version, backend in product(benchmarks, versions, backends):
-        if benchmark == "packing_on_the_sphere" and backend == "numpy":
-            continue
-        benchmark_dir = os.path.join(
-            outdir, f"{benchmark}-{version}-{backend}"
-        )
-        # call the process once or twice to warm up the cache
-        print(
-            "========= RUNNING BENCHMARK:"
-            f" {os.path.basename(benchmark_dir)} ============="
-        )
+    for version in versions:
+        results_file = f"out2/results-{version}.csv"
+        with open(os.path.join(basedir, results_file), "w") as f:
+            f.write("benchmark,backend,optim_times")
         subprocess.run(
-            f". .venv/bin/activate && python3 {benchmark}.py -b {backend} -n 10",
-            cwd=benchmark_dir,
+            f". .venv_{version}/bin/activate && python3 run_per_version.py "
+            f"--benchmarks {','.join(benchmarks)} "  # noqa: E231
+            f"--backends {','.join(backends)} "  # noqa: E231
+            f" --iter 10 --results_file {results_file}",
+            cwd=basedir,
             shell=True,
-            stderr=subprocess.DEVNULL,
         )
 
 
@@ -153,6 +117,6 @@ def analyze_benchmarks():
 
 
 if __name__ == "__main__":
-    setup()
+    # setup()
     run_benchmarks()
-    analyze_benchmarks()
+    # analyze_benchmarks()
