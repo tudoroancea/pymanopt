@@ -271,8 +271,12 @@ class NumpyBackend(Backend):
     ) -> Union[np.ndarray, Number]:
         return np.linalg.norm(array, ord=ord, axis=axis, keepdims=keepdims)
 
-    def linalg_qr(self, array: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def linalg_qr(
+        self, array: np.ndarray, normalized: bool = True
+    ) -> tuple[np.ndarray, np.ndarray]:
         q, r = np.linalg.qr(array)
+        if not normalized:
+            return q, r
         # Compute signs or unit-modulus phase of entries of diagonal of r.
         s = np.diagonal(r, axis1=-2, axis2=-1).copy()
         s[s == 0] = 1

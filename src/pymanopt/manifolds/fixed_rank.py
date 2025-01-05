@@ -210,8 +210,8 @@ class FixedRankEmbedded(RiemannianSubmanifold):
         u, s, vt = point
         du, ds, dvt = tangent_vector
 
-        Qu, Ru = bk.linalg_qr(du)
-        Qv, Rv = bk.linalg_qr(dvt)
+        Qu, Ru = bk.linalg_qr(du, normalized=False)
+        Qv, Rv = bk.linalg_qr(dvt, normalized=False)
         T = bk.vstack(
             (
                 bk.hstack((bk.diag(s) + ds, bk.transpose(Rv))),

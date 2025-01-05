@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 import tensorflow as tf
 from numpy import testing as np_testing
@@ -25,7 +24,8 @@ class TestProblem:
         problem = pymanopt.Problem(self.manifold, self.cost)
         x = tf.random.normal([self.n])
         np_testing.assert_allclose(
-            2 * x * np.exp(np.sum(x**2)), problem.euclidean_gradient(x)
+            2 * x * tf.exp(tf.reduce_sum(x**2)),
+            problem.euclidean_gradient(x),
         )
 
     def test_attribute_override(self):

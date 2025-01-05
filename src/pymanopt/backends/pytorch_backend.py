@@ -389,9 +389,11 @@ class PytorchBackend(Backend):
         return norm
 
     def linalg_qr(
-        self, array: torch.Tensor
+        self, array: torch.Tensor, normalized=True
     ) -> tuple[torch.Tensor, torch.Tensor]:
         q, r = torch.linalg.qr(array)
+        if not normalized:
+            return q, r
         # Compute signs or unit-modulus phase of entries of diagonal of r.
         s = torch.diagonal(r, dim1=-2, dim2=-1).clone()
         s[s == 0] = 1

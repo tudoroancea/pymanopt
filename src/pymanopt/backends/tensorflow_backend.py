@@ -369,8 +369,12 @@ class TensorflowBackend(Backend):
             tf.norm(array, ord=ord, axis=axis, keepdims=keepdims)
         )
 
-    def linalg_qr(self, array: tf.Tensor) -> tf.Tensor:
+    def linalg_qr(
+        self, array: tf.Tensor, normalized: bool = True
+    ) -> tf.Tensor:
         q, r = tf.linalg.qr(array)
+        if not normalized:
+            return q, r
         # Compute signs or unit-modulus phase of entries of diagonal of r.
         s = tf.identity(tf.linalg.diag_part(r))
         s = tf.where(tf.equal(s, 0.0), tf.ones_like(s), s)

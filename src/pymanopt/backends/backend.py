@@ -432,7 +432,9 @@ class Backend(ABC):
         ...
 
     @not_implemented
-    def linalg_qr(self, array: array_t) -> tuple[array_t, array_t]:
+    def linalg_qr(
+        self, array: array_t, normalized: bool = True
+    ) -> tuple[array_t, array_t]:
         ...
 
     @not_implemented

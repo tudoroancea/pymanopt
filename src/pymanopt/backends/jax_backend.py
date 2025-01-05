@@ -315,8 +315,12 @@ class JaxBackend(Backend):
     ) -> jnp.ndarray:
         return jnp.linalg.norm(array, ord=ord, axis=axis, keepdims=keepdims)
 
-    def linalg_qr(self, array: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+    def linalg_qr(
+        self, array: jnp.ndarray, normalized: bool = True
+    ) -> tuple[jnp.ndarray, jnp.ndarray]:
         q, r = jnp.linalg.qr(array)
+        if not normalized:
+            return q, r
 
         # Compute signs or unit-modulus phase of entries of diagonal of r.
         s = jnp.diagonal(r, axis1=-2, axis2=-1).copy()
