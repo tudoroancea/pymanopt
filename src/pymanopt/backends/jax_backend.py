@@ -329,15 +329,6 @@ class JaxBackend(Backend):
 
     def linalg_qr(self, array: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
         q, r = jnp.linalg.qr(array)
-
-        # Compute signs or unit-modulus phase of entries of diagonal of r.
-        s = jnp.diagonal(r, axis1=-2, axis2=-1).copy()
-        s: jax.Array = jnp.where(s == 0.0, 1.0, s)
-        s = s / jnp.abs(s)
-        s = jnp.expand_dims(s, axis=-1)
-        # normalize q and r to have either 1 or unit-modulus on the diagonal of r
-        q = q * self.transpose(s)
-        r = r * jnp.conjugate(s)
         return q, r
 
     def linalg_solve(

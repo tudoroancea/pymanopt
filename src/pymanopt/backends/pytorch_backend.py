@@ -404,14 +404,6 @@ class PytorchBackend(Backend):
         self, array: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
         q, r = torch.linalg.qr(array)
-        # Compute signs or unit-modulus phase of entries of diagonal of r.
-        s = torch.diagonal(r, dim1=-2, dim2=-1).clone()
-        s[s == 0] = 1
-        s = s / torch.abs(s)
-        s = torch.unsqueeze(s, dim=-1)
-        # normalize q and r to have either 1 or unit-modulus on the diagonal of r
-        q = q * torch.transpose(s, -2, -1)
-        r = r * torch.conj(s)
         return q, r
 
     def linalg_solve(
