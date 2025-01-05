@@ -367,7 +367,7 @@ class PytorchBackend(Backend):
             logm_function = np.vectorize(
                 scipy.linalg.logm, signature="(m,m)->(m,m)"
             )
-            return torch.from_numpy(logm_function(array))
+            return torch.from_numpy(logm_function(array)).to(dtype=self.dtype)
 
         w, v = torch.linalg.eigh(array)
         w = torch.unsqueeze(torch.log(w), dim=-1)
