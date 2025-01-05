@@ -24,14 +24,14 @@ def main(
     iter = args.iter
     results_file = args.results_file
 
-    init_times, autodiff_times, optim_times = [], [], []
-
     # create a new csv file for the results
     with open(results_file, "w") as f:
         writer = csv.writer(f)
         writer.writerow(["benchmark", "backend", "optim_times"])
 
     for benchmark, backend in product(benchmarks, backends):
+        if (benchmark, backend) == ("packing_on_the_sphere", "numpy"):
+            continue
         benchmark_module = importlib.import_module(benchmark)
 
         # generate a set of seeds for each run, that will be the same no matter what
@@ -39,6 +39,7 @@ def main(
         np.random.seed(127)
         seeds = np.random.randint(0, 1000, size=(iter, 2))
 
+        init_times, autodiff_times, optim_times = [], [], []
         # run the benchmark for each seed
         for seed in seeds:
             np.random.seed(seed[0])
@@ -64,7 +65,7 @@ def main(
 
         with open(results_file, "a") as f:
             f.write(
-                f"{benchmark},{backend},[{','.join(map(str, optim_times))}]\n"  # noqa: E231, B950
+                f"{benchmark},{backend},\"[{','.join(map(str, optim_times))}]\"\n"  # noqa: E231, B950
             )
 
 

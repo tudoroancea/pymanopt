@@ -1,7 +1,10 @@
+# flake8: noqa E231
+import ast
 import os
 import subprocess
-from itertools import product
 
+import colorama
+import numpy as np
 import pandas as pd
 
 
@@ -38,85 +41,101 @@ def setup():
     assert (
         wheel is not None
     ), f"dev wheel doesn't exist in {os.path.abspath(distdir)}"
-    # create two venvs
-    subprocess.run("uv venv .venv_master", cwd=basedir, shell=True)
-    subprocess.run(
-        "uv pip install --exact pymanopt[backends]",
-        cwd=basedir,
-        shell=True,
-        env=os.environ
-        | {"VIRTUAL_ENV": os.path.join(basedir, ".venv_master")},
-    )
-    subprocess.run("uv venv .venv_dev", cwd=basedir, shell=True)
-    subprocess.run(
-        f"uv pip install --exact {wheel}[backends]",
-        cwd=basedir,
-        shell=True,
-        env=os.environ | {"VIRTUAL_ENV": os.path.join(basedir, ".venv_dev")},
-    )
+    # create venvs
+    if not os.path.exists(os.path.join(basedir, ".venv_master")):
+        subprocess.run("uv venv .venv_master", cwd=basedir, shell=True)
+        subprocess.run(
+            "uv pip install --exact pymanopt[backends]",
+            cwd=basedir,
+            shell=True,
+            env=os.environ
+            | {"VIRTUAL_ENV": os.path.join(basedir, ".venv_master")},
+        )
+    if not os.path.exists(os.path.join(basedir, ".venv_dev")):
+        subprocess.run("uv venv .venv_dev", cwd=basedir, shell=True)
+        subprocess.run(
+            f"uv pip install --exact {wheel}[backends]",
+            cwd=basedir,
+            shell=True,
+            env=os.environ
+            | {"VIRTUAL_ENV": os.path.join(basedir, ".venv_dev")},
+        )
 
 
 def run_benchmarks():
     for version in versions:
-        results_file = f"out2/results-{version}.csv"
+        results_file = os.path.join(outdir, f"results-{version}.csv")
         with open(os.path.join(basedir, results_file), "w") as f:
             f.write("benchmark,backend,optim_times")
         subprocess.run(
             f". .venv_{version}/bin/activate && python3 run_per_version.py "
             f"--benchmarks {','.join(benchmarks)} "  # noqa: E231
             f"--backends {','.join(backends)} "  # noqa: E231
-            f" --iter 10 --results_file {results_file}",
+            f" --iter 20 --results_file {results_file}",
             cwd=basedir,
             shell=True,
         )
 
 
-def analyze_benchmarks():
-    # check we are running in the correct directory
-    assert (
-        os.path.basename((basedir := os.path.abspath(os.curdir)))
-        == "benchmarks"
-    ), f"must be in benchmarks folder, not {basedir}"
-    outdir = os.path.join(basedir, "out")
+def print_results(df):
+    colorama.init()
+    print("\nBenchmark Results (times in seconds, speedup in %):")
+    print("=" * 85)
+    print(
+        f"{'Benchmark':<35}{'Backend':<15}{'Master (s)':<13}{'Dev (s)':<13}{'Speedup':<10}"
+    )
+    print("-" * 85)
+    for idx in df.index:
+        benchmark, backend = idx
+        master_time = df.loc[idx, "master"]
+        dev_time = df.loc[idx, "dev"]
+        speedup = df.loc[idx, "speedup"]
 
+        # Color the speedup based on whether it's an improvement or regression
+        color = (
+            colorama.Fore.YELLOW
+            if -10.0 <= speedup <= 10.0
+            else (colorama.Fore.GREEN if speedup > 10.0 else colorama.Fore.RED)
+        )
+        speedup_str = f"{color}{speedup:+.2f}%{colorama.Fore.RESET}"
+
+        print(
+            f"{benchmark:<35}{backend:<15}{master_time:<13.3f}{dev_time:<13.3f}{speedup_str:<10}"
+        )
+
+    print("=" * 85)
+
+
+def analyze_benchmarks():
     # create multi index for the benchmark, backend and phase
     index = pd.MultiIndex.from_product(
-        [benchmarks, backends, ["init", "autodiff", "optim"]],
-        names=["benchmark", "backend", "phase"],
+        [benchmarks, backends],
+        names=["benchmark", "backend"],
     ).drop(("packing_on_the_sphere", "numpy"))
 
     # create dataframe with two columns("master" and "dev")
-    df = pd.DataFrame(columns=["master", "dev"], index=index)
-    for benchmark, version, backend in product(benchmarks, versions, backends):
-        if benchmark == "packing_on_the_sphere" and backend == "numpy":
-            continue
+    df = pd.DataFrame(columns=versions, index=index)
+
+    # read dfs from results-dev.csv and results-master.csv to fill the two columns
+    for version in versions:
         benchmark_timings = pd.read_csv(
-            os.path.join(
-                outdir,
-                f"{benchmark}-{version}-{backend}",
-                f"results-{backend}.csv",
-            )
+            os.path.join(outdir, f"results-{version}.csv")
         )
-        # add 3 rows for each benchmark
-        df.at[(benchmark, backend, "init"), version] = benchmark_timings[
-            "init"
-        ].mean()
-        df.at[(benchmark, backend, "autodiff"), version] = benchmark_timings[
-            "autodiff"
-        ].mean()
-        df.at[(benchmark, backend, "optim"), version] = benchmark_timings[
-            "optim"
-        ].mean()
+        benchmark_timings["optim_times"] = benchmark_timings[
+            "optim_times"
+        ].apply(ast.literal_eval)
+        df[version] = benchmark_timings.set_index(
+            ["benchmark", "backend"]
+        ).apply(lambda x: np.mean(x["optim_times"]), axis=1)
 
     # compute improvement in %
-    df["speedup"] = df["master"] / df["dev"] - 1
+    df["speedup"] = (df["master"] / df["dev"] - 1) * 100
     df["improving"] = df["speedup"] > 0
 
-    # print the results
-    print(df)
+    print_results(df)
 
 
 if __name__ == "__main__":
-    # setup()
-    run_benchmarks()
-    # analyze_benchmarks()
+    setup()
+    # run_benchmarks()
+    analyze_benchmarks()
