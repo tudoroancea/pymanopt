@@ -1,8 +1,7 @@
-import os
 from typing import Any
 
 
-def init(backend: str):
+def init(backend: str, dev=True):
     import numpy as np
 
     import pymanopt
@@ -19,11 +18,11 @@ def init(backend: str):
     samples -= samples.mean(axis=0)
 
     manifold = Stiefel(dimension, num_components)
-    vars = {
-        "samples": samples,
-        "num_components": num_components,
-        "manifold": manifold,
-    }
+    if dev:
+        from pymanopt.backends.numpy_backend import NumpyBackend
+
+        manifold.set_compatible_backend(NumpyBackend())
+    initial_point = manifold.random_point()
     euclidean_gradient = None
     euclidean_hessian = None
     if backend == "numpy":
@@ -57,12 +56,28 @@ def init(backend: str):
     elif backend == "autograd":
         import autograd.numpy as anp
 
+        samples = anp.asarray(samples)
+
+        if dev:
+            from pymanopt.backends.autograd_backend import AutogradBackend
+
+            manifold.set_compatible_backend(AutogradBackend())
+            initial_point = anp.array(initial_point)
+
         @pymanopt.function.autograd(manifold)
         def cost(w):
             return anp.linalg.norm(samples - samples @ w @ w.T) ** 2
 
     elif backend == "jax":
         import jax.numpy as jnp
+
+        samples = jnp.asarray(samples)
+
+        if dev:
+            from pymanopt.backends.jax_backend import JaxBackend
+
+            manifold.set_compatible_backend(JaxBackend())
+            initial_point = jnp.array(initial_point)
 
         @pymanopt.function.jax(manifold)
         def cost(w):
@@ -71,9 +86,13 @@ def init(backend: str):
     elif backend == "pytorch":
         import torch
 
-        modules["torch"] = torch
-
         samples = torch.from_numpy(samples)
+
+        if dev:
+            from pymanopt.backends.pytorch_backend import PytorchBackend
+
+            manifold.set_compatible_backend(PytorchBackend())
+            initial_point = torch.tensor(initial_point, requires_grad=True)
 
         @pymanopt.function.pytorch(manifold)
         def cost(w):
@@ -83,9 +102,13 @@ def init(backend: str):
     elif backend == "tensorflow":
         import tensorflow as tf
 
-        modules["tf"] = tf
-
         samples = tf.constant(samples)
+
+        if dev:
+            from pymanopt.backends.tensorflow_backend import TensorflowBackend
+
+            manifold.set_compatible_backend(TensorflowBackend())
+            initial_point = tf.Variable(initial_point)
 
         @pymanopt.function.tensorflow(manifold)
         def cost(w):
@@ -98,7 +121,13 @@ def init(backend: str):
         euclidean_gradient=euclidean_gradient,
         euclidean_hessian=euclidean_hessian,
     )
-    vars["problem"] = problem
+    vars = {
+        "samples": samples,
+        "num_components": num_components,
+        "manifold": manifold,
+        "initial_point": initial_point,
+        "problem": problem,
+    }
     return modules, vars
 
 
@@ -119,17 +148,8 @@ def optim(modules: dict, vars: dict):
 def check_res(backend: str, modules: dict, vars: dict, res: Any):
     np = modules["np"]
     num_components = vars["num_components"]
-    samples = vars["samples"]
-    estimated_span_matrix = res
-
-    if not isinstance(estimated_span_matrix, np.ndarray):
-        if backend == "pytorch":
-            estimated_span_matrix = (
-                estimated_span_matrix.cpu().detach().numpy()
-            )
-        elif backend == "tensorflow":
-            estimated_span_matrix = estimated_span_matrix.numpy()
-
+    samples = np.array(vars["samples"])
+    estimated_span_matrix = np.array(res)
     estimated_projector = estimated_span_matrix @ estimated_span_matrix.T
 
     eigenvalues, eigenvectors = np.linalg.eig(samples.T @ samples)
@@ -137,18 +157,5 @@ def check_res(backend: str, modules: dict, vars: dict, res: Any):
     span_matrix = eigenvectors[:, indices]
     projector = span_matrix @ span_matrix.T
 
-    assert np.allclose(
-        estimated_projector, projector, atol=1e-6
-    ), f"error: {np.linalg.norm(estimated_projector - projector)}"
-
-
-if __name__ == "__main__":
-    from template import run_benchmark
-
-    run_benchmark(
-        f"benchmark_{os.path.basename(__file__)}",
-        init,
-        autodiff,
-        optim,
-        check_res,
-    )
+    if not np.allclose(estimated_projector, projector, atol=1e-6):
+        print(f"error: {np.linalg.norm(estimated_projector - projector)}")

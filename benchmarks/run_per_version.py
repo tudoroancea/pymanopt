@@ -1,6 +1,8 @@
 import argparse
+import cProfile
 import csv
 import importlib
+import os
 import time
 from itertools import product
 
@@ -24,6 +26,9 @@ def main(
     iter = args.iter
     results_file = args.results_file
 
+    version = "master" if "master" in results_file else "dev"
+    outdir = os.path.dirname(os.path.abspath(results_file))
+
     # create a new csv file for the results
     with open(results_file, "w") as f:
         writer = csv.writer(f)
@@ -34,28 +39,28 @@ def main(
             continue
         benchmark_module = importlib.import_module(benchmark)
 
-        # generate a set of seeds for each run, that will be the same no matter what
-        # the backend is
-        np.random.seed(127)
-        seeds = np.random.randint(0, 1000, size=(iter, 2))
-
-        init_times, autodiff_times, optim_times = [], [], []
         # run the benchmark for each seed
-        for seed in seeds:
-            np.random.seed(seed[0])
+        init_times, autodiff_times, optim_times = [], [], []
+        pr = cProfile.Profile()
+        for _ in range(iter):
+            # np.random.seed(seed[0])
+            np.random.seed(127)
             t = time.perf_counter()
-            modules, vars = benchmark_module.init(backend)
+            modules, vars = benchmark_module.init(
+                backend, dev=version == "dev"
+            )
             init_times.append(time.perf_counter() - t)
 
-            # np.random.seed(seed[1])
-            # t = time.perf_counter()
-            # benchmark_module.autodiff(backend, modules, vars)
-            # autodiff_times.append(time.perf_counter() - t)
-            autodiff_times.append(0.0)
+            np.random.seed(127)
+            t = time.perf_counter()
+            benchmark_module.autodiff(backend, modules, vars)
+            autodiff_times.append(time.perf_counter() - t)
 
+            pr.enable()
             t = time.perf_counter()
             res = benchmark_module.optim(modules, vars)
             optim_times.append(time.perf_counter() - t)
+            pr.disable()
 
             benchmark_module.check_res(backend, modules, vars, res)
 
@@ -63,6 +68,9 @@ def main(
         # print(f"autodiff time: {np.mean(autodiff_times):.3f}s")  # noqa: E231
         # print(f"optim time: {np.mean(optim_times):.3f}s")  # noqa: E231
 
+        pr.dump_stats(
+            os.path.join(outdir, f"{benchmark}_{backend}_{version}.prof")
+        )
         with open(results_file, "a") as f:
             f.write(
                 f"{benchmark},{backend},\"[{','.join(map(str, optim_times))}]\"\n"  # noqa: E231, B950

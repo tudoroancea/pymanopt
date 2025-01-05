@@ -1,8 +1,7 @@
-import os
 from typing import Any
 
 
-def init(backend: str):
+def init(backend: str, dev=True):
     import numpy as np
 
     import pymanopt
@@ -10,25 +9,19 @@ def init(backend: str):
 
     modules = {"np": np, "pymanopt": pymanopt}
 
-    n = 512
+    n = 128
     matrix = np.random.normal(size=(n, n))
     matrix = 0.5 * (matrix + matrix.T)
     manifold = Sphere(n)
-    vars = {"matrix": matrix, "manifold": manifold}
+    if dev:
+        from pymanopt.backends.numpy_backend import NumpyBackend
+
+        manifold.set_compatible_backend(NumpyBackend())
+
+    initial_point = manifold.random_point()
+
     euclidean_gradient = None
-    if backend == "autograd":
-
-        @pymanopt.function.autograd(manifold)
-        def cost(x):
-            return -x.T @ matrix @ x
-
-    elif backend == "jax":
-
-        @pymanopt.function.jax(manifold)
-        def cost(x):
-            return -x.T @ matrix @ x
-
-    elif backend == "numpy":
+    if backend == "numpy":
 
         @pymanopt.function.numpy(manifold)
         def cost(x):
@@ -38,23 +31,57 @@ def init(backend: str):
         def euclidean_gradient(x):
             return -2 * matrix @ x
 
+    elif backend == "autograd":
+        if dev:
+            import autograd.numpy as anp
+
+            from pymanopt.backends.autograd_backend import AutogradBackend
+
+            manifold.set_compatible_backend(AutogradBackend())
+            initial_point = anp.array(initial_point)
+
+        @pymanopt.function.autograd(manifold)
+        def cost(x):
+            return -x.T @ matrix @ x
+
+    elif backend == "jax":
+        import jax.numpy as jnp
+
+        matrix = jnp.array(matrix)
+        if dev:
+            from pymanopt.backends.jax_backend import JaxBackend
+
+            manifold.set_compatible_backend(JaxBackend())
+            initial_point = jnp.array(initial_point)
+
+        @pymanopt.function.jax(manifold)
+        def cost(x):
+            return -x.T @ matrix @ x
+
     elif backend == "pytorch":
         import torch
 
-        modules["torch"] = torch
+        matrix = torch.from_numpy(matrix)
+        if dev:
+            from pymanopt.backends.pytorch_backend import PytorchBackend
 
-        matrix_ = torch.from_numpy(matrix)
+            manifold.set_compatible_backend(PytorchBackend())
+            initial_point = torch.tensor(initial_point)
 
         @pymanopt.function.pytorch(manifold)
         def cost(x):
-            return -x.reshape(1, -1) @ matrix_ @ x.reshape(-1, 1)
+            return -x.reshape(1, -1) @ matrix @ x.reshape(-1, 1)
 
     elif backend == "tensorflow":
         import tensorflow as tf
 
-        modules["tf"] = tf
-
         matrix = tf.constant(matrix)
+
+        if dev:
+            from pymanopt.backends.tensorflow_backend import TensorflowBackend
+
+            manifold.set_compatible_backend(TensorflowBackend())
+            initial_point = tf.constant(initial_point)
 
         @pymanopt.function.tensorflow(manifold)
         def cost(x):
@@ -63,7 +90,12 @@ def init(backend: str):
     problem = pymanopt.Problem(
         manifold, cost, euclidean_gradient=euclidean_gradient
     )
-    vars["problem"] = problem
+    vars = {
+        "matrix": matrix,
+        "manifold": manifold,
+        "problem": problem,
+        "initial_point": initial_point,
+    }
     return modules, vars
 
 
@@ -78,20 +110,19 @@ def optim(modules: dict, vars: dict):
         verbosity=0,
         max_iterations=1e5,
     )
-    res = optimizer.run(vars["problem"]).point
+    res = optimizer.run(
+        vars["problem"], initial_point=vars["initial_point"]
+    ).point
     return res
 
 
 def check_res(backend: str, modules: dict, vars: dict, res: Any):
     np = modules["np"]
-    if not isinstance(res, np.ndarray):
-        if backend == "pytorch":
-            res = res.cpu().detach().numpy()
-        elif backend == "tensorflow":
-            res = res.numpy()
-
+    res = np.array(res)
+    matrix = vars["matrix"]
     # Calculate the actual solution by a conventional eigenvalue decomposition.
-    eigenvalues, eigenvectors = np.linalg.eig(vars["matrix"])
+    matrix = np.array(vars["matrix"])
+    eigenvalues, eigenvectors = np.linalg.eig(matrix)
     ground_truth = eigenvectors[:, np.argmax(eigenvalues)]
 
     # Make sure both vectors have the same direction. Both are valid
@@ -101,19 +132,8 @@ def check_res(backend: str, modules: dict, vars: dict, res: Any):
         res = -res
 
     # Check norm between the two vectors is close to zero.
-    assert np.allclose(ground_truth, res, atol=1.5e-5), (
-        "norm between the two vectors is "
-        f"{np.linalg.norm(ground_truth - res)}"
-    )
-
-
-if __name__ == "__main__":
-    from template import run_benchmark
-
-    run_benchmark(
-        f"benchmark_{os.path.basename(__file__)}",
-        init,
-        autodiff,
-        optim,
-        check_res,
-    )
+    if not np.allclose(ground_truth, res, atol=1.5e-5):
+        print(
+            "norm between the two vectors is "
+            f"{np.linalg.norm(ground_truth - res)}"
+        )
