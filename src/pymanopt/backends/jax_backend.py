@@ -267,20 +267,8 @@ class JaxBackend(Backend):
     ) -> tuple[jnp.ndarray, jnp.ndarray]:
         return jnp.linalg.eigh(array)
 
-    def linalg_eigvalsh(
-        self, array_x: jnp.ndarray, array_y: Optional[jnp.ndarray] = None
-    ) -> jnp.ndarray:
-        if array_y is None:
-            return jscipy.linalg.eigh(array_x, array_y, eigvals_only=True)
-        else:
-            # the generalized eigen value problem is only supported in scipy
-            # for the moment.
-            return jnp.asarray(
-                np.vectorize(
-                    pyfunc=scipy.linalg.eigvalsh, signature="(m,m),(m,m)->(m)"
-                )(np.asarray(array_x), np.asarray(array_y)),
-                dtype=self.dtype,
-            )
+    def linalg_eigvalsh(self, array_x: jnp.ndarray) -> jnp.ndarray:
+        return jscipy.linalg.eigh(array_x, eigvals_only=True)
 
     def linalg_expm(
         self, array: jnp.ndarray, symmetric: bool = False

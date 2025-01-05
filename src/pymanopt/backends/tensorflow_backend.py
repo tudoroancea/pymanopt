@@ -1,7 +1,6 @@
 from numbers import Number
 from typing import Any, Callable, Literal, Optional, Union
 
-import numpy as np
 import scipy
 import tensorflow as tf
 
@@ -320,17 +319,8 @@ class TensorflowBackend(Backend):
         w, u = tf.linalg.eigh(array)
         return tf.math.real(w), u
 
-    def linalg_eigvalsh(
-        self, array_x: tf.Tensor, array_y: Optional[tf.Tensor] = None
-    ) -> tf.Tensor:
-        if array_y is None:
-            return tf.math.real(tf.linalg.eigvalsh(array_x))
-        else:
-            return self.array(
-                np.vectorize(
-                    scipy.linalg.eigvalsh, signature="(m,m),(m,m)->(m)"
-                )(array_x.numpy(), array_y.numpy())
-            )
+    def linalg_eigvalsh(self, array_x: tf.Tensor) -> tf.Tensor:
+        return tf.math.real(tf.linalg.eigvalsh(array_x))
 
     def linalg_expm(
         self, array: tf.Tensor, symmetric: bool = False

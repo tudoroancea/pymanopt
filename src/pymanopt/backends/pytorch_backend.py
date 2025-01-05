@@ -335,20 +335,8 @@ class PytorchBackend(Backend):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         return torch.linalg.eigh(array)
 
-    def linalg_eigvalsh(
-        self, array_x: torch.Tensor, array_y: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
-        if array_y is None:
-            return torch.linalg.eigvalsh(array_x)
-        else:
-            return torch.from_numpy(
-                np.vectorize(
-                    pyfunc=scipy.linalg.eigvalsh, signature="(m,m),(m,m)->(m)"
-                )(
-                    array_x.cpu().detach().numpy(),
-                    array_y.cpu().detach().numpy(),
-                )
-            )
+    def linalg_eigvalsh(self, array_x: torch.Tensor) -> torch.Tensor:
+        return torch.linalg.eigvalsh(array_x)
 
     def linalg_expm(
         self, array: torch.Tensor, symmetric: bool = False

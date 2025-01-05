@@ -394,11 +394,7 @@ class Backend(ABC):
         ...
 
     @not_implemented
-    def linalg_eigvalsh(
-        self,
-        array_x: array_t,
-        array_y: Optional[array_t] = None,
-    ) -> array_t:
+    def linalg_eigvalsh(self, array_x: array_t) -> array_t:
         ...
 
     @not_implemented

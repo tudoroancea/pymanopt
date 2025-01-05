@@ -217,15 +217,8 @@ class NumpyBackend(Backend):
     def linalg_eigh(self, array: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return np.linalg.eigh(array)
 
-    def linalg_eigvalsh(
-        self, array_x: np.ndarray, array_y: Optional[np.ndarray] = None
-    ) -> np.ndarray:
-        if array_y is None:
-            return np.linalg.eigvalsh(array_x)
-        else:
-            return np.vectorize(
-                scipy.linalg.eigvalsh, signature="(m,m),(m,m)->(m)"
-            )(array_x, array_y)
+    def linalg_eigvalsh(self, array_x: np.ndarray) -> np.ndarray:
+        return np.linalg.eigvalsh(array_x)
 
     def linalg_expm(
         self, array: np.ndarray, symmetric: bool = False
