@@ -290,9 +290,9 @@ class JaxBackend(Backend):
         self, array: jnp.ndarray, positive_definite: bool = False
     ) -> jnp.ndarray:
         if not positive_definite:
-            return self.array(
+            return jnp.asarray(
                 np.vectorize(scipy.linalg.logm, signature="(m,m)->(m,m)")(
-                    np.asarray(array)
+                    array
                 ),
             )
 
@@ -328,9 +328,7 @@ class JaxBackend(Backend):
         self, array_a: jnp.ndarray, array_q: jnp.ndarray
     ) -> jnp.ndarray:
         return jnp.asarray(
-            scipy.linalg.solve_continuous_lyapunov(
-                np.asarray(array_a), np.asarray(array_q)
-            )
+            scipy.linalg.solve_continuous_lyapunov(array_a, array_q)
         )
 
     def linalg_svd(

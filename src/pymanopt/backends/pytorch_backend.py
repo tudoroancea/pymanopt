@@ -367,7 +367,7 @@ class PytorchBackend(Backend):
             logm_function = np.vectorize(
                 scipy.linalg.logm, signature="(m,m)->(m,m)"
             )
-            return self.array(logm_function(array.cpu().detach().numpy()))
+            return torch.from_numpy(logm_function(array))
 
         w, v = torch.linalg.eigh(array)
         w = torch.unsqueeze(torch.log(w), dim=-1)
@@ -404,10 +404,8 @@ class PytorchBackend(Backend):
     ) -> torch.Tensor:
         # solve_continuous_lyapunov is not implemented in PyTorch so we use the
         # SciPy implementation
-        return torch.tensor(
-            scipy.linalg.solve_continuous_lyapunov(
-                array_a.cpu().detach().numpy(), array_q.cpu().detach().numpy()
-            )
+        return torch.from_numpy(
+            scipy.linalg.solve_continuous_lyapunov(array_a, array_q)
         )
 
     def linalg_svd(

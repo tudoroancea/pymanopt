@@ -386,9 +386,7 @@ class TensorflowBackend(Backend):
         self, array_a: tf.Tensor, array_q: tf.Tensor
     ) -> tf.Tensor:
         return self.array(
-            scipy.linalg.solve_continuous_lyapunov(
-                array_a.numpy(), array_q.numpy()
-            )
+            scipy.linalg.solve_continuous_lyapunov(array_a, array_q)
         )
 
     def linalg_svd(
