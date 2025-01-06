@@ -1,4 +1,5 @@
 # flake8: noqa E231
+import argparse
 import ast
 import os
 import subprocess
@@ -7,30 +8,6 @@ import colorama
 import numpy as np
 import pandas as pd
 import scipy.stats
-
-
-benchmarks = [
-    "dominant_eigenvector",
-    "low_rank_matrix_approximation",
-    "pca",
-    # "packing_on_the_sphere",
-]
-versions = ["dev", "master"]
-backends = [
-    "numpy",
-    "autograd",
-    "pytorch",
-    "jax",
-    "tensorflow",
-]
-
-# check we are running in the correct directory
-assert (
-    os.path.basename((basedir := os.path.abspath(os.curdir))) == "benchmarks"
-), f"must be in benchmarks folder, not {basedir}"
-# create output directory
-outdir = os.path.join(basedir, "out2")
-os.makedirs(outdir, exist_ok=True)
 
 
 def setup():
@@ -63,13 +40,15 @@ def setup():
         )
 
 
-def run_benchmarks():
-    for version in versions:
-        results_file = os.path.join(outdir, f"results-{version}.csv")
+def run_benchmarks(
+    benchmarks: list[str], backends: list[str], branches: list[str]
+):
+    for branch in branches:
+        results_file = os.path.join(outdir, f"results-{branch}.csv")
         with open(os.path.join(basedir, results_file), "w") as f:
             f.write("benchmark,backend,optim_times")
         subprocess.run(
-            f". .venv_{version}/bin/activate && python3 run_per_version.py "
+            f". .venv_{branch}/bin/activate && python3 run_per_version.py "
             f"--benchmarks {','.join(benchmarks)} "  # noqa: E231
             f"--backends {','.join(backends)} "  # noqa: E231
             f" --iter 20 --results_file {results_file}",
@@ -79,7 +58,9 @@ def run_benchmarks():
         )
 
 
-def analyze_benchmarks():
+def analyze_benchmarks(
+    benchmarks: list[str], backends: list[str], branches: list[str]
+):
     # create multi index for the benchmark, backend and phase
     index = pd.MultiIndex.from_product(
         [benchmarks, backends],
@@ -92,17 +73,15 @@ def analyze_benchmarks():
     df = pd.DataFrame(index=index)
 
     # read dfs from results-dev.csv and results-master.csv to fill the two columns
-    for version in versions:
+    for branch in branches:
         benchmark_timings = pd.read_csv(
-            os.path.join(outdir, f"results-{version}.csv")
+            os.path.join(outdir, f"results-{branch}.csv")
         ).set_index(["benchmark", "backend"])
-        df[version + "_times"] = benchmark_timings["optim_times"].apply(
+        df[branch + "_times"] = benchmark_timings["optim_times"].apply(
             ast.literal_eval
         )
-        df[version + "_avg"] = df[version + "_times"].apply(
-            lambda x: np.mean(x)
-        )
-        df[version + "_std"] = df[version + "_times"].apply(
+        df[branch + "_avg"] = df[branch + "_times"].apply(lambda x: np.mean(x))
+        df[branch + "_std"] = df[branch + "_times"].apply(
             lambda x: np.std(x, ddof=1)
         )
 
@@ -113,7 +92,7 @@ def analyze_benchmarks():
     for id in df.index:
         avg_speedup = df.loc[id, "avg_speedup"]
         if avg_speedup > 1.1:
-            alternative = "greater"
+            alternative = "less"
         elif avg_speedup < 0.9:
             alternative = "greater"
         else:
@@ -132,11 +111,11 @@ def analyze_benchmarks():
         df.loc[id, "pvalue"] = res.pvalue
 
     colorama.init()
-    print("=" * 100)
+    print("=" * 102)
     print(
         f"{'Benchmark':<35}{'Backend':<15}{'Master (s)':<15}{'Dev (s)':<15}{'Avg speedup':<15}{'p-value':<10}"
     )
-    print("-" * 100)
+    print("-" * 102)
     for idx in df.index:
         row_str = ""
 
@@ -154,7 +133,7 @@ def analyze_benchmarks():
         avg_speedup = df.loc[idx, "avg_speedup"]
         row_str += (
             f"{colorama.Fore.YELLOW if 0.9 <= avg_speedup <= 1.1 else (colorama.Fore.GREEN if avg_speedup > 1.1 else colorama.Fore.RED)}"
-            f"{f'{avg_speedup:.2f}x':<15}"
+            f"{f'{avg_speedup:.3f}x':<15}"
             f"{colorama.Fore.RESET}"
         )
 
@@ -165,12 +144,9 @@ def analyze_benchmarks():
             f"{colorama.Fore.RESET}"
         )
 
-        # conv_interval_low = df.loc[idx, "conf_interval_low"]
-        # conv_interval_high = df.loc[idx, "conf_interval_high"]
-
         print(row_str)
 
-    print("=" * 100)
+    print("=" * 102)
 
     # unravel index to columns and export results to csv
     df.reset_index().to_csv(
@@ -179,6 +155,35 @@ def analyze_benchmarks():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--benchmarks",
+        type=str,
+        default="dominant_eigenvector,low_rank_matrix_approximation,pca,packing_on_the_sphere",
+    )
+    parser.add_argument(
+        "--backends", type=str, default="numpy,autograd,pytorch,jax,tensorflow"
+    )
+    parser.add_argument("--iter", type=int, default=20)
+    parser.add_argument("--outdir", type=str, default="out")
+    parser.add_argument("--skip_run", action="store_true")
+    args = parser.parse_args()
+    benchmarks = args.benchmarks.split(",")
+    backends = args.backends.split(",")
+    outdir = args.outdir
+    iter = args.iter
+    skip_run = args.skip_run
+    branches = ["master", "dev"]
+    # check we are running in the correct directory
+    assert (
+        os.path.basename((basedir := os.path.abspath(os.curdir)))
+        == "benchmarks"
+    ), f"must be in benchmarks folder, not {basedir}"
+    # create output directory
+    outdir = os.path.join(basedir, outdir)
+    os.makedirs(outdir, exist_ok=True)
+    # perform the benchmarks
     setup()
-    # run_benchmarks()
-    analyze_benchmarks()
+    if not skip_run:
+        run_benchmarks(benchmarks, backends, branches)
+    analyze_benchmarks(benchmarks, backends, branches)
