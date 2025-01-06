@@ -21,7 +21,7 @@ def main():
     iter = args.iter
     results_file = args.results_file
 
-    version = "master" if "master" in results_file else "dev"
+    branch = "master" if "master" in results_file else "dev"
     outdir = os.path.dirname(os.path.abspath(results_file))
 
     # create a new csv file for the results
@@ -34,7 +34,7 @@ def main():
             continue
         print(
             f"running benchmark {benchmark} with backend {backend} "
-            f"on branch {version}"
+            f"on branch {branch}"
         )
         benchmark_module = importlib.import_module(benchmark)
 
@@ -43,9 +43,7 @@ def main():
         pr = cProfile.Profile()
         for _ in range(iter):
             np.random.seed(127)
-            modules, vars = benchmark_module.init(
-                backend, dev=version == "dev"
-            )
+            modules, vars = benchmark_module.init(backend, dev=branch == "dev")
 
             np.random.seed(127)
             benchmark_module.autodiff(backend, modules, vars)
@@ -59,7 +57,7 @@ def main():
             benchmark_module.check_res(backend, modules, vars, res)
 
         pr.dump_stats(
-            os.path.join(outdir, f"{benchmark}_{backend}_{version}.prof")
+            os.path.join(outdir, f"{benchmark}_{backend}_{branch}.prof")
         )
         with open(results_file, "a") as f:
             f.write(

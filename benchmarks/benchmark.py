@@ -48,7 +48,7 @@ def run_benchmarks(
         with open(os.path.join(basedir, results_file), "w") as f:
             f.write("benchmark,backend,optim_times")
         subprocess.run(
-            f". .venv_{branch}/bin/activate && python3 run_per_version.py "
+            f". .venv_{branch}/bin/activate && python3 run_per_branch.py "
             f"--benchmarks {','.join(benchmarks)} "  # noqa: E231
             f"--backends {','.join(backends)} "  # noqa: E231
             f" --iter {iter} --results_file {results_file}",
