@@ -187,6 +187,7 @@ def check_gradient(problem, x=None, d=None):
             "If it is far from 0, then the gradient is not in the tangent "
             "space."
         )
+        assert error < 1e-8, "The residual should be very close to 0."
 
 
 def check_hessian(problem, point=None, tangent_vector=None):
@@ -254,6 +255,7 @@ def check_hessian(problem, point=None, tangent_vector=None):
             "If it is far from 0, then the Hessian is not in the tangent "
             "space."
         )
+        assert error < 1e-8, "The residual should be very close to 0."
     print()
 
     # Check linearity of Hessian operator.
@@ -277,6 +279,9 @@ def check_hessian(problem, point=None, tangent_vector=None):
     )
     print("If it is far from 0, then the Hessian is not a linear operator.")
     print()
+    assert (
+        error_norm < 1e-8
+    ), f"The hessian is not linear: {error_norm:g}."  # noqa: E231
 
     # Check symmetry of Hessian operator.
     inner_product_a = problem.manifold.inner_product(
@@ -291,6 +296,7 @@ def check_hessian(problem, point=None, tangent_vector=None):
         f"{inner_product_a:g} - {inner_product_b:g} = {error:g}."  # noqa: E231
     )
     print("If it is far from 0 then the Hessian is not a symmetric operator.")
+    assert abs(error) < 1e-8, "The hessian is not symmetric."
 
 
 def check_retraction(manifold, point=None, tangent_vector=None):

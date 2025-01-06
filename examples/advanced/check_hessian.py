@@ -11,6 +11,9 @@ from pymanopt.manifolds import Sphere
 from pymanopt.tools.diagnostics import check_hessian
 
 
+np.random.seed(127)
+
+
 SUPPORTED_BACKENDS = ("autograd", "jax", "numpy", "pytorch", "tensorflow")
 
 
