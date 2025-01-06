@@ -33,12 +33,10 @@ def init(backend: str, dev=True):
 
     elif backend == "autograd":
         if dev:
-            import autograd.numpy as anp
-
             from pymanopt.backends.autograd_backend import AutogradBackend
 
             manifold.set_compatible_backend(AutogradBackend())
-            initial_point = anp.array(initial_point)
+            initial_point = manifold.backend.array(initial_point)
 
         @pymanopt.function.autograd(manifold)
         def cost(x):
@@ -52,7 +50,7 @@ def init(backend: str, dev=True):
             from pymanopt.backends.jax_backend import JaxBackend
 
             manifold.set_compatible_backend(JaxBackend())
-            initial_point = jnp.array(initial_point)
+            initial_point = manifold.backend.array(initial_point)
 
         @pymanopt.function.jax(manifold)
         def cost(x):
@@ -66,7 +64,7 @@ def init(backend: str, dev=True):
             from pymanopt.backends.pytorch_backend import PytorchBackend
 
             manifold.set_compatible_backend(PytorchBackend())
-            initial_point = torch.tensor(initial_point)
+            initial_point = manifold.backend.array(initial_point)
 
         @pymanopt.function.pytorch(manifold)
         def cost(x):
@@ -81,7 +79,7 @@ def init(backend: str, dev=True):
             from pymanopt.backends.tensorflow_backend import TensorflowBackend
 
             manifold.set_compatible_backend(TensorflowBackend())
-            initial_point = tf.constant(initial_point)
+            initial_point = manifold.backend.array(initial_point)
 
         @pymanopt.function.tensorflow(manifold)
         def cost(x):
@@ -107,7 +105,7 @@ def autodiff(backend: str, modules: dict, vars: dict):
 
 def optim(modules: dict, vars: dict):
     optimizer = modules["pymanopt"].optimizers.SteepestDescent(
-        verbosity=0,
+        verbosity=1,
         max_iterations=1e5,
     )
     res = optimizer.run(

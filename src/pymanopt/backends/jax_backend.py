@@ -148,7 +148,7 @@ class JaxBackend(Backend):
         return jnp.abs(array)
 
     def all(self, array: jnp.ndarray) -> bool:
-        return jnp.all(jnp.array(array, dtype=bool)).item()
+        return jnp.all(jnp.asarray(array, dtype=bool)).item()
 
     def allclose(
         self,
@@ -160,7 +160,7 @@ class JaxBackend(Backend):
         return jnp.allclose(array_a, array_b, rtol=rtol, atol=atol).item()
 
     def any(self, array: jnp.ndarray) -> bool:
-        return jnp.any(jnp.array(array, dtype=bool)).item()
+        return jnp.any(jnp.asarray(array, dtype=bool)).item()
 
     def arange(
         self,
@@ -290,7 +290,7 @@ class JaxBackend(Backend):
         self, array: jnp.ndarray, positive_definite: bool = False
     ) -> jnp.ndarray:
         if not positive_definite:
-            return jnp.asarray(
+            return self.array(
                 np.vectorize(scipy.linalg.logm, signature="(m,m)->(m,m)")(
                     array
                 ),
@@ -340,7 +340,7 @@ class JaxBackend(Backend):
     def linalg_solve_continuous_lyapunov(
         self, array_a: jnp.ndarray, array_q: jnp.ndarray
     ) -> jnp.ndarray:
-        return jnp.asarray(
+        return self.array(
             scipy.linalg.solve_continuous_lyapunov(array_a, array_q)
         )
 

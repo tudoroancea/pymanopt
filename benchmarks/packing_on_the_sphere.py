@@ -9,19 +9,16 @@ def init(backend: str, dev=True):
 
     modules = {"np": np, "pymanopt": pymanopt}
 
-    # setup the problem
     dimension = 10  # Dimension of the embedding space, i.e. R^k
     num_points = 50  # Points on the sphere
     epsilon = 0.005
-
-    # generate initial point for optimizer
-    initial_point = np.random.normal(size=(num_points, dimension))
-    initial_point = (
-        initial_point / np.linalg.norm(initial_point, axis=1)[:, None]
-    )
-
-    # create manifold
     manifold = Elliptope(num_points, dimension)
+    if dev:
+        from pymanopt.backends.numpy_backend import NumpyBackend
+
+        manifold.set_compatible_backend(NumpyBackend())
+
+    initial_point = manifold.random_point()
 
     # create cost function
     if backend == "numpy":
@@ -31,63 +28,72 @@ def init(backend: str, dev=True):
     elif backend == "autograd":
         import autograd.numpy as anp
 
+        if dev:
+            from pymanopt.backends.autograd_backend import AutogradBackend
+
+            manifold.set_compatible_backend(AutogradBackend())
+            initial_point = manifold.backend.array(initial_point)
+
         @pymanopt.function.autograd(manifold)
         def cost(X):
             Y = X @ X.T
             # Shift the exponentials by the maximum value to reduce numerical
             # trouble due to possible overflows.
-            s = anp.triu(Y, 1).max()
+            s = anp.max(anp.triu(Y, 1))
             expY = anp.exp((Y - s) / epsilon)
-            # Zero out the diagonal
-            expY -= anp.diag(anp.diag(expY))
-            u = anp.triu(expY, 1).sum()
+            u = anp.sum(anp.triu(expY, 1))
             return s + epsilon * anp.log(u)
 
     elif backend == "jax":
         import jax.numpy as jnp
 
         if dev:
-            initial_point = jnp.array(initial_point)
+            from pymanopt.backends.jax_backend import JaxBackend
+
+            manifold.set_compatible_backend(JaxBackend())
+            initial_point = manifold.backend.array(initial_point)
 
         @pymanopt.function.jax(manifold)
         def cost(X):
             Y = X @ X.T
-            s = jnp.triu(Y, 1).max()
+            s = jnp.max(jnp.triu(Y, 1))
             expY = jnp.exp((Y - s) / epsilon)
-            expY -= jnp.diag(jnp.diag(expY))
-            u = jnp.triu(expY, 1).sum()
+            u = jnp.sum(jnp.triu(expY, 1))
             return s + epsilon * jnp.log(u)
 
     elif backend == "pytorch":
         import torch
 
-        modules["torch"] = torch
-
         if dev:
-            initial_point = torch.from_numpy(initial_point)
+            from pymanopt.backends.pytorch_backend import PytorchBackend
+
+            manifold.set_compatible_backend(PytorchBackend())
+            initial_point = manifold.backend.array(initial_point)
 
         @pymanopt.function.pytorch(manifold)
-        def cost(X):
+        def cost(X: torch.Tensor):
             Y = X @ torch.transpose(X, 1, 0)
-            s = torch.triu(Y, 1).max()
+            s = torch.max(torch.triu(Y, 1))
             expY = torch.exp((Y - s) / epsilon)
-            expY = expY - torch.diag(torch.diag(expY))
-            u = torch.triu(expY, 1).sum()
+            u = torch.sum(torch.triu(expY, 1))
             return s + epsilon * torch.log(u)
 
     elif backend == "tensorflow":
         import tensorflow as tf
+        import tensorflow.experimental.numpy as tnp
 
         if dev:
-            initial_point = tf.convert_to_tensor(initial_point)
+            from pymanopt.backends.tensorflow_backend import TensorflowBackend
+
+            manifold.set_compatible_backend(TensorflowBackend())
+            initial_point = manifold.backend.array(initial_point)
 
         @pymanopt.function.tensorflow(manifold)
         def cost(X):
             Y = X @ tf.transpose(X)
-            s = tf.reduce_max(tf.linalg.band_part(Y, 0, -1))
-            expY = tf.exp((Y - s) / epsilon)
-            expY = expY - tf.linalg.diag(tf.linalg.diag_part(expY))
-            u = tf.reduce_sum(tf.linalg.band_part(Y, 0, -1))
+            s = tnp.max(tnp.triu(Y, 1))
+            expY = tnp.exp((Y - s) / epsilon)
+            u = tnp.sum(tnp.triu(expY, 1))
             return s + epsilon * tf.math.log(u)
 
     problem = pymanopt.Problem(manifold, cost)
@@ -106,7 +112,7 @@ def autodiff(backend: str, modules: dict, vars: dict):
 
 def optim(modules: dict, vars: dict):
     optimizer = modules["pymanopt"].optimizers.ConjugateGradient(
-        verbosity=0, min_gradient_norm=1e-8, max_iterations=1e5
+        verbosity=1, min_gradient_norm=1e-8, max_iterations=1e5
     )
     res = optimizer.run(
         vars["problem"], initial_point=vars["initial_point"]
@@ -115,7 +121,7 @@ def optim(modules: dict, vars: dict):
 
 
 def check_res(backend: str, modules: dict, vars: dict, res: Any):
-    return
+    # return
     np = modules["np"]
     Y = res
 
