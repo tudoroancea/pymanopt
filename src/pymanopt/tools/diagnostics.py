@@ -170,6 +170,10 @@ def check_gradient(problem, x=None, d=None):
     )
     plt.show()
 
+    assert (
+        np.abs(poly[0] - 2) < 0.1
+    ), f"The error slope should be close to 2 but is {poly[0]}"
+
     grad = problem.riemannian_gradient(x)
     try:
         projected_grad = problem.manifold.to_tangent_space(x, grad)
@@ -233,6 +237,10 @@ def check_hessian(problem, point=None, tangent_vector=None):
         "for h."
     )
     plt.show()
+
+    assert (
+        np.abs(poly[0] - 3) < 0.1
+    ), f"The error slope should be close to 3 but is {poly[0]}"
 
     hessian = problem.riemannian_hessian(point, tangent_vector)
     try:

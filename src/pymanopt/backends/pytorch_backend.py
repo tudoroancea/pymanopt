@@ -113,8 +113,12 @@ class PytorchBackend(Backend):
 
     def generate_gradient_operator(self, function, num_arguments) -> Callable:
         def gradient(*args: torch.Tensor):
-            function(*[arg.requires_grad_(True) for arg in args]).backward()
-            return [arg.requires_grad_(False).grad for arg in args]
+            for arg in args:
+                arg.requires_grad_(True)
+            grads = torch.autograd.grad(function(*args), args)
+            for arg in args:
+                arg.requires_grad_(False)
+            return grads
 
         if num_arguments == 1:
             return unpack_singleton_sequence_return_value(gradient)
@@ -128,18 +132,21 @@ class PytorchBackend(Backend):
     ):
         def hvp(*inputs: torch.Tensor):
             args, vectors = bisect_sequence(inputs)
-            function(*[arg.requires_grad_(True) for arg in args]).backward(
-                create_graph=True
+            # note: all the code below could technically be replaced by
+            # torch.autograd.functional.hvp(function, args, vectors)[1]
+            # but it seems to be slower based on some quick benchmarking
+            # using benchmarks/pca.py
+            for arg in args:
+                arg.requires_grad_(True)
+            grads = torch.autograd.grad(
+                function(*args), args, create_graph=True, allow_unused=True
             )
             dot_product = torch.tensor(0.0, dtype=self.dtype)
-            for arg, vector in zip(args, vectors):
-                dot_product += torch.real(torch.sum(arg.grad * vector))
-                arg.grad = None
-            dot_product.backward()
-            res = []
+            for grad, vector in zip(grads, vectors):
+                dot_product += torch.sum(torch.conj(grad) * vector)
+            res = torch.autograd.grad(dot_product, args, allow_unused=True)
             for arg in args:
-                res.append(torch.conj(arg.requires_grad_(False).grad))
-                arg.grad = None
+                arg.requires_grad_(False)
             return res
 
         if num_arguments == 1:

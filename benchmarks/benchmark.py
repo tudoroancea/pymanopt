@@ -41,7 +41,7 @@ def setup():
 
 
 def run_benchmarks(
-    benchmarks: list[str], backends: list[str], branches: list[str]
+    benchmarks: list[str], backends: list[str], branches: list[str], iter: int
 ):
     for branch in branches:
         results_file = os.path.join(outdir, f"results-{branch}.csv")
@@ -51,7 +51,7 @@ def run_benchmarks(
             f". .venv_{branch}/bin/activate && python3 run_per_version.py "
             f"--benchmarks {','.join(benchmarks)} "  # noqa: E231
             f"--backends {','.join(backends)} "  # noqa: E231
-            f" --iter 20 --results_file {results_file}",
+            f" --iter {iter} --results_file {results_file}",
             cwd=basedir,
             shell=True,
             stderr=subprocess.DEVNULL,
@@ -185,5 +185,5 @@ if __name__ == "__main__":
     # perform the benchmarks
     setup()
     if not skip_run:
-        run_benchmarks(benchmarks, backends, branches)
+        run_benchmarks(benchmarks, backends, branches, iter)
     analyze_benchmarks(benchmarks, backends, branches)
