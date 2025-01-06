@@ -4,7 +4,6 @@ from typing import Any, Callable, Literal, Optional, Union
 import numpy as np
 import scipy.linalg
 import torch
-from torch import autograd
 
 from pymanopt.backends.backend import Backend, DTypePrecision, TupleOrList
 from pymanopt.tools import (
@@ -114,22 +113,34 @@ class PytorchBackend(Backend):
 
     def generate_gradient_operator(self, function, num_arguments) -> Callable:
         def gradient(*args: torch.Tensor):
-            for arg in args:
-                arg.requires_grad_(True)
-            grads = autograd.grad(function(*args), args)  # type: ignore
-            for arg in args:
-                arg.requires_grad_(False)
-            return grads
+            function(*[arg.requires_grad_(True) for arg in args]).backward()
+            return [arg.requires_grad_(False).grad for arg in args]
 
         if num_arguments == 1:
             return unpack_singleton_sequence_return_value(gradient)
 
         return gradient
 
-    def generate_hessian_operator(self, function, num_arguments):
+    def generate_hessian_operator(
+        self,
+        function: Callable[..., torch.Tensor],
+        num_arguments: int,
+    ):
         def hvp(*inputs: torch.Tensor):
             args, vectors = bisect_sequence(inputs)
-            return autograd.functional.hvp(function, args, vectors)[1]
+            function(*[arg.requires_grad_(True) for arg in args]).backward(
+                create_graph=True
+            )
+            dot_product = torch.tensor(0.0, dtype=self.dtype)
+            for arg, vector in zip(args, vectors):
+                dot_product += torch.real(torch.sum(arg.grad * vector))
+                arg.grad = None
+            dot_product.backward()
+            res = []
+            for arg in args:
+                res.append(torch.conj(arg.requires_grad_(False).grad))
+                arg.grad = None
+            return res
 
         if num_arguments == 1:
             return unpack_singleton_sequence_return_value(hvp)

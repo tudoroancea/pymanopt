@@ -6,7 +6,7 @@ import torch
 import pymanopt
 from examples._tools import ExampleRunner
 from pymanopt import Problem
-from pymanopt.manifolds import Sphere
+from pymanopt.manifolds import Euclidean
 from pymanopt.tools.diagnostics import check_gradient
 
 
@@ -62,7 +62,7 @@ def create_cost_and_derivates(manifold, matrix, backend):
 
 def run(backend=SUPPORTED_BACKENDS[0], quiet=True):
     n = 128
-    manifold = Sphere(n)
+    manifold = Euclidean(n)
 
     # Generate random problem data.
     matrix = np.random.normal(size=(n, n))

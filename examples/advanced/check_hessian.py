@@ -51,6 +51,7 @@ def create_cost_and_derivates(manifold, matrix, backend):
 
         @pymanopt.function.pytorch(manifold)
         def cost(x):
+            # return -torch.trace(x.T @ matrix @ x)
             return -x @ matrix @ x
 
     elif backend == "tensorflow":
@@ -69,6 +70,8 @@ def create_cost_and_derivates(manifold, matrix, backend):
 def run(backend=SUPPORTED_BACKENDS[0], quiet=True):
     n = 128
     manifold = Sphere(n)
+    # manifold = Euclidean(n)
+    # manifold = Stiefel(n, n // 2)
 
     # Generate random problem data.
     matrix = np.random.normal(size=(n, n))

@@ -11,7 +11,7 @@ def init(backend: str, dev=True):
     modules = {"np": np, "pymanopt": pymanopt}
 
     # setup problem
-    m, n, rank = 20, 10, 5
+    m, n, rank = 200, 100, 10
     matrix = np.random.normal(size=(m, n))
     manifold = FixedRankEmbedded(m, n, rank)
     if dev:

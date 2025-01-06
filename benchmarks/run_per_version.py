@@ -9,12 +9,7 @@ from itertools import product
 import numpy as np
 
 
-def main(
-    # init: Callable[[str], tuple[dict, dict]],
-    # autodiff: Callable[[str, dict, dict], None],
-    # optim: Callable[[dict, dict], Any],
-    # check_res: Callable[[str, dict, dict, Any], None],
-):
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--benchmarks", type=str)
     parser.add_argument("--backends", type=str)
@@ -37,24 +32,23 @@ def main(
     for benchmark, backend in product(benchmarks, backends):
         if (benchmark, backend) == ("packing_on_the_sphere", "numpy"):
             continue
+        print(
+            f"running benchmark {benchmark} with backend {backend} "
+            f"on branch {version}"
+        )
         benchmark_module = importlib.import_module(benchmark)
 
         # run the benchmark for each seed
-        init_times, autodiff_times, optim_times = [], [], []
+        optim_times = []
         pr = cProfile.Profile()
         for _ in range(iter):
-            # np.random.seed(seed[0])
             np.random.seed(127)
-            t = time.perf_counter()
             modules, vars = benchmark_module.init(
                 backend, dev=version == "dev"
             )
-            init_times.append(time.perf_counter() - t)
 
             np.random.seed(127)
-            t = time.perf_counter()
             benchmark_module.autodiff(backend, modules, vars)
-            autodiff_times.append(time.perf_counter() - t)
 
             pr.enable()
             t = time.perf_counter()
@@ -63,10 +57,6 @@ def main(
             pr.disable()
 
             benchmark_module.check_res(backend, modules, vars, res)
-
-        # print(f"init time: {np.mean(init_times):.3f}s")  # noqa: E231
-        # print(f"autodiff time: {np.mean(autodiff_times):.3f}s")  # noqa: E231
-        # print(f"optim time: {np.mean(optim_times):.3f}s")  # noqa: E231
 
         pr.dump_stats(
             os.path.join(outdir, f"{benchmark}_{backend}_{version}.prof")

@@ -108,7 +108,7 @@ def init(backend: str, dev=True):
             from pymanopt.backends.tensorflow_backend import TensorflowBackend
 
             manifold.set_compatible_backend(TensorflowBackend())
-            initial_point = tf.Variable(initial_point)
+            initial_point = tf.constant(initial_point)
 
         @pymanopt.function.tensorflow(manifold)
         def cost(w):
@@ -141,7 +141,9 @@ def autodiff(backend: str, modules: dict, vars: dict):
 
 def optim(modules: dict, vars: dict):
     optimizer = modules["pymanopt"].optimizers.TrustRegions(verbosity=0)
-    res = optimizer.run(vars["problem"]).point
+    res = optimizer.run(
+        vars["problem"], initial_point=vars["initial_point"]
+    ).point
     return res
 
 
