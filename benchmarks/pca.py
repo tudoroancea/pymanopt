@@ -140,7 +140,7 @@ def autodiff(backend: str, modules: dict, vars: dict):
 
 
 def optim(modules: dict, vars: dict):
-    optimizer = modules["pymanopt"].optimizers.TrustRegions(verbosity=0)
+    optimizer = modules["pymanopt"].optimizers.TrustRegions(verbosity=1)
     res = optimizer.run(
         vars["problem"], initial_point=vars["initial_point"]
     ).point

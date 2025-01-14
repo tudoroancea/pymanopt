@@ -112,7 +112,7 @@ def autodiff(backend: str, modules: dict, vars: dict):
 
 def optim(modules: dict, vars: dict):
     optimizer = modules["pymanopt"].optimizers.ConjugateGradient(
-        verbosity=1, min_gradient_norm=1e-8, max_iterations=1e5
+        verbosity=2, min_gradient_norm=1e-8, max_iterations=1e5
     )
     res = optimizer.run(
         vars["problem"], initial_point=vars["initial_point"]

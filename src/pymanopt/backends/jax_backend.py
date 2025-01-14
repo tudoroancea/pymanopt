@@ -20,7 +20,8 @@ try:
     from jax import config
 except ImportError:
     from jax.config import config  # type: ignore
-
+# Avoid using float32 by default, see
+# https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html#double-64bit-precision
 config.update("jax_enable_x64", True)
 
 

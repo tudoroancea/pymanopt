@@ -3,6 +3,7 @@ from typing import Any, Callable, Literal, Optional, Union
 
 import scipy
 import tensorflow as tf
+from tensorflow.python.ops.numpy_ops import np_config
 
 from pymanopt.backends.backend import Backend, DTypePrecision, TupleOrList
 from pymanopt.tools import (
@@ -18,7 +19,11 @@ from pymanopt.tools import (
 #   matrix vector multiplication)
 # for more details see documentation:
 # https://www.tensorflow.org/api_docs/python/tf/experimental/numpy/experimental_enable_numpy_behavior
-tf.experimental.numpy.experimental_enable_numpy_behavior(prefer_float32=True)
+tf.experimental.numpy.experimental_enable_numpy_behavior(
+    prefer_float32=False, dtype_conversion_mode="all"
+)
+tf.keras.backend.set_floatx("float64")
+np_config.enable_numpy_behavior()
 
 
 def elementary_math_function(
@@ -127,6 +132,7 @@ class TensorflowBackend(Backend):
 
     def generate_gradient_operator(self, function, num_arguments):
         def gradient(*args):
+            args = [tf.constant(arg, self.dtype) for arg in args]
             with tf.GradientTape() as tape:
                 for arg in args:
                     tape.watch(arg)
@@ -219,6 +225,7 @@ class TensorflowBackend(Backend):
         return tf.argsort(array)
 
     def array(self, array: Any) -> tf.Tensor:  # type: ignore
+        return tf.constant(array, dtype=self.dtype)
         if isinstance(array, tf.Tensor):
             if self.is_dtype_real and self.iscomplexobj(array):
                 array = tf.math.real(array)
