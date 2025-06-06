@@ -4,11 +4,15 @@ on:
   pull_request:
     branches:
       - master
-      - develop_backends
   push:
     branches:
       - master
-      - develop_backends
+      - uv
+
+# this is necessary for uv to install dependencies in the system python env and not
+# a virtual env (see https://docs.astral.sh/uv/guides/integration/github/#using-uv-pip)
+env:
+  UV_SYSTEM_PYTHON: 1
 
 jobs:
   tests:
@@ -24,20 +28,21 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: pyproject.toml
 
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
 
       - name: Install dependencies
-        run: pip install -e ".[all,ci]"
+        run: uv pip install -e ".[all,ci]"
 
       - name: Run tests
         run: |
