@@ -25,10 +25,12 @@ class TracingError(Exception):
 
 
 class _Var:
-    __slots__ = ("id",)
+    __slots__ = ("id", "shape", "dtype")
 
-    def __init__(self, id):
+    def __init__(self, id, shape, dtype):
         self.id = id
+        self.shape = shape
+        self.dtype = dtype
 
 
 def _map(function, value, cls):
@@ -63,7 +65,8 @@ class _Trace:
     def new_tracer(self, value):
         if not hasattr(value, "dtype"):
             value = np.asarray(value)
-        tracer = Tracer(self, _Var(self.num_vars), value)
+        var = _Var(self.num_vars, value.shape, value.dtype)
+        tracer = Tracer(self, var, value)
         self.num_vars += 1
         return tracer
 
@@ -99,7 +102,8 @@ class Program:
             env[out.id] = function(*values, **kwargs)
         return env, [_map(lookup, output, _Var) for output in self.outputs]
 
-    def compile(self):
+    def live_equations(self):
+        """Returns the equations the outputs depend on."""
         live = {o.id for o in self.outputs if isinstance(o, _Var)}
         equations = []
         for equation in reversed(self.equations):
@@ -112,7 +116,11 @@ class Program:
                     )
                 )
         equations.reverse()
+        return equations
 
+    def compile(self, *args):
+        """Compiles the program to a Python function of NumPy calls."""
+        equations = self.live_equations()
         namespace = {"_output": _output, "_copy": np.array}
         names = {}
 
@@ -515,9 +523,10 @@ class _Operator:
     flow depends on traced values, the program is rebuilt on every call.
     """
 
-    def __init__(self, function, build):
+    def __init__(self, function, build, compile):
         self._function = function
         self._build = build
+        self._compile = compile
         self._programs = {}
         self._retrace = False
 
@@ -533,21 +542,46 @@ class _Operator:
             except TracingError:
                 self._retrace = True
                 return self(*args)
-            program = self._programs[key] = program.compile()
+            program = self._programs[key] = self._compile(program, args)
         return program(*args)
 
 
-def gradient(function):
-    """Returns a function computing the gradients of ``function``."""
-    return _Operator(function, _gradient_program)
+def compiled(function, compile=Program.compile):
+    """Returns ``function`` compiled per argument shapes and dtypes."""
+    returns_sequence = []
+
+    def build(function, args, concrete):
+        def record(*args):
+            result = function(*args)
+            returns_sequence[:] = [isinstance(result, (list, tuple))]
+            return result
+
+        return trace(record, args, concrete)
+
+    operator = _Operator(function, build, compile)
+
+    def wrapper(*args):
+        results = operator(*args)
+        return list(results) if returns_sequence[0] else results[0]
+
+    return wrapper
 
 
-def hessian_vector_product(function):
+def gradient(function, compile=Program.compile):
+    """Returns a function computing the gradients of ``function``.
+
+    ``compile(program, args)`` turns a program into a function, given the
+    arguments it was traced with.
+    """
+    return _Operator(function, _gradient_program, compile)
+
+
+def hessian_vector_product(function, compile=Program.compile):
     """Returns a function computing Hessian-vector products of ``function``.
 
     The returned function takes the points followed by the vectors.
     """
-    return _Operator(function, _hessian_program)
+    return _Operator(function, _hessian_program, compile)
 
 
 ##############################################################################

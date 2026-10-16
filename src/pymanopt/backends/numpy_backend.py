@@ -63,33 +63,35 @@ class NumpyBackend(Backend):
         if self.is_dtype_real:
             return self
         if self.dtype == np.complex64:
-            return NumpyBackend(dtype=np.float32)
+            return type(self)(dtype=np.float32)
         if self.dtype == np.complex128:
-            return NumpyBackend(dtype=np.float64)
+            return type(self)(dtype=np.float64)
         raise ValueError(f"dtype {self.dtype} is not supported")
 
     def to_complex_backend(self) -> "NumpyBackend":
         if not self.is_dtype_real:
             return self
         if self.dtype == np.float32:
-            return NumpyBackend(dtype=np.complex64)
+            return type(self)(dtype=np.complex64)
         if self.dtype == np.float64:
-            return NumpyBackend(dtype=np.complex128)
+            return type(self)(dtype=np.complex128)
         raise ValueError(f"dtype {self.dtype} is not supported")
 
     ##############################################################################
     # Autodiff methods
     ##############################################################################
 
+    _compile = staticmethod(_numpy_autodiff.Program.compile)
+
     def generate_gradient_operator(self, function, num_arguments):
-        gradient = _numpy_autodiff.gradient(function)
+        gradient = _numpy_autodiff.gradient(function, self._compile)
         if num_arguments == 1:
             return unpack_singleton_sequence_return_value(gradient)
         return gradient
 
     def generate_hessian_operator(self, function, num_arguments):
         hessian_vector_product = _numpy_autodiff.hessian_vector_product(
-            function
+            function, self._compile
         )
         if num_arguments == 1:
             return unpack_singleton_sequence_return_value(

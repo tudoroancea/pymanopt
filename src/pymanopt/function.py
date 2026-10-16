@@ -1,4 +1,12 @@
-__all__ = ["Function", "autograd", "jax", "numpy", "pytorch", "tensorflow"]
+__all__ = [
+    "Function",
+    "autograd",
+    "jax",
+    "numba",
+    "numpy",
+    "pytorch",
+    "tensorflow",
+]
 
 import inspect
 from importlib import import_module
@@ -13,7 +21,7 @@ class Function:
         self, *, function: Callable, manifold: Manifold, backend: Backend
     ):
         self._original_function = function
-        self._function = function
+        self._function = backend.compile_function(function)
         self._num_arguments = manifold.num_values
 
         self._gradient = None
@@ -90,6 +98,7 @@ def decorator_factory(
 
 
 numpy = decorator_factory("numpy_backend", "NumpyBackend")
+numba = decorator_factory("numba_backend", "NumbaBackend")
 jax = decorator_factory("jax_backend", "JaxBackend")
 pytorch = decorator_factory("pytorch_backend", "PytorchBackend")
 autograd = decorator_factory("autograd_backend", "AutogradBackend")

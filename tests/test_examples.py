@@ -193,10 +193,17 @@ class TestExamples:
         ],
         ids=lambda example: example.__name__,
     )
-    def test_autograd_cost_with_numpy_autodiff(self, example, monkeypatch):
-        # The autograd costs run unchanged on the NumPy backend, which then
-        # differentiates them itself.
+    @pytest.mark.parametrize("decorator", ["numpy", "numba"])
+    def test_autograd_cost_with_numpy_autodiff(
+        self, example, decorator, monkeypatch
+    ):
+        # The autograd costs run unchanged on the NumPy and numba backends,
+        # which then differentiate them themselves.
+        if decorator == "numba":
+            pytest.importorskip("numba")
         monkeypatch.setattr(
-            pymanopt.function, "autograd", pymanopt.function.numpy
+            pymanopt.function,
+            "autograd",
+            getattr(pymanopt.function, decorator),
         )
         example.run("autograd")

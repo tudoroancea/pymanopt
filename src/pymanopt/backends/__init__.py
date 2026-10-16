@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from . import (  # noqa: F401
         autograd_backend,
         jax_backend,  # noqa: F401
+        numba_backend,  # noqa: F401
         numpy_backend,  # noqa: F401
         pytorch_backend,  # noqa: F401
         tensorflow_backend,  # noqa: F401
@@ -41,6 +42,7 @@ else:
         __name__,
         [
             "numpy_backend",
+            "numba_backend",
             "jax_backend",
             "autograd_backend",
             "pytorch_backend",

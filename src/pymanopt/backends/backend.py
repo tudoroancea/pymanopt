@@ -157,6 +157,13 @@ class Backend(ABC):
     # Autodiff methods
     ##############################################################################
 
+    def compile_function(self, function: Callable) -> Callable:
+        """Returns a function computing the same values as ``function``.
+
+        Backends which can compile functions return a faster equivalent.
+        """
+        return function
+
     @abstractmethod
     def generate_gradient_operator(self, function, num_arguments) -> Callable:
         """Creates a function to compute gradients of a function.

@@ -245,11 +245,11 @@ def _arguments(rng, shapes, transformations, is_complex):
     return args
 
 
-def _check(cost, shapes, transformations, dtype):
+def _check(cost, shapes, transformations, dtype, backend=NumpyBackend):
     is_complex = np.issubdtype(dtype, np.complexfloating)
     rng = np.random.default_rng(42)
     n = len(shapes)
-    ours = NumpyBackend(dtype)
+    ours = backend(dtype)
     reference = AutogradBackend(dtype)
 
     def numpy_cost(*args):
