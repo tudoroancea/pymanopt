@@ -19,16 +19,14 @@ Installation
 ------------
 
 Pymanopt is compatible with Python 3.8+, and depends on NumPy and SciPy.
-Additionally, to use Pymanopt's built-in automatic differentiation, which we
-strongly recommend, you need to setup your cost functions using either
+Cost functions written in plain NumPy and decorated with
+:func:`pymanopt.function.numpy` are differentiated automatically without any
+additional dependency (see :doc:`autodiff`).
+Alternatively, cost functions can be written using
 `Autograd <https://github.com/HIPS/autograd>`_,
 `JAX <https://jax.readthedocs.io/en/latest/>`_,
 `TensorFlow <https://www.tensorflow.org>`_ or
 `PyTorch <http://www.pytorch.org/>`_.
-If you are unfamiliar with these packages and you are unsure which to go for,
-we suggest to start with Autograd.
-Autograd wraps thinly around NumPy, and is very simple to use, particularly if
-you're already familiar with NumPy.
 To get the latest version of Pymanopt, install it via `pip` by specifying the
 backend(s) you want to use among `autograd`, `jax`, `torch` and `tensorflow`,
 separated by a comma. For example:

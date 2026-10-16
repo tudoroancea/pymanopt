@@ -1,5 +1,6 @@
 import pytest
 
+import pymanopt
 from examples import (
     closest_unit_norm_column_approximation,
     dominant_eigenvector,
@@ -168,3 +169,34 @@ class TestExamples:
     )
     def test_check_retraction(self, backend):
         check_retraction.run(backend)
+
+    @pytest.mark.parametrize(
+        "example",
+        [
+            example
+            for example in (
+                closest_unit_norm_column_approximation,
+                dominant_eigenvector,
+                dominant_invariant_complex_subspace,
+                dominant_invariant_subspace,
+                low_rank_matrix_approximation,
+                low_rank_psd_matrix_approximation,
+                multiple_linear_regression,
+                optimal_rotations,
+                packing_on_the_sphere,
+                pca,
+                rank_k_correlation_matrix_approximation,
+                check_gradient,
+                check_hessian,
+            )
+            if "autograd" in example.SUPPORTED_BACKENDS
+        ],
+        ids=lambda example: example.__name__,
+    )
+    def test_autograd_cost_with_numpy_autodiff(self, example, monkeypatch):
+        # The autograd costs run unchanged on the NumPy backend, which then
+        # differentiates them itself.
+        monkeypatch.setattr(
+            pymanopt.function, "autograd", pymanopt.function.numpy
+        )
+        example.run("autograd")

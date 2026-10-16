@@ -6,13 +6,9 @@ import packaging.version as pv
 import scipy
 import scipy.linalg
 
+from pymanopt.backends import _numpy_autodiff
 from pymanopt.backends.backend import Backend, DTypePrecision, TupleOrList
-
-
-def _raise_not_implemented_error(*args, **kwargs):
-    raise NotImplementedError(
-        "No autodiff support available for the NumPy backend"
-    )
+from pymanopt.tools import unpack_singleton_sequence_return_value
 
 
 class NumpyBackend(Backend):
@@ -85,8 +81,21 @@ class NumpyBackend(Backend):
     # Autodiff methods
     ##############################################################################
 
-    generate_gradient_operator = _raise_not_implemented_error
-    generate_hessian_operator = _raise_not_implemented_error
+    def generate_gradient_operator(self, function, num_arguments):
+        gradient = _numpy_autodiff.gradient(function)
+        if num_arguments == 1:
+            return unpack_singleton_sequence_return_value(gradient)
+        return gradient
+
+    def generate_hessian_operator(self, function, num_arguments):
+        hessian_vector_product = _numpy_autodiff.hessian_vector_product(
+            function
+        )
+        if num_arguments == 1:
+            return unpack_singleton_sequence_return_value(
+                hessian_vector_product
+            )
+        return hessian_vector_product
 
     ##############################################################################
     # Numerics functions
