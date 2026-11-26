@@ -48,7 +48,7 @@ def _only_one_true(*args):
 
 class _ObjectiveFunctionDecorator(Protocol):
     def __call__(
-        self, manifold: Manifold, dtype: Optional[Any] = None
+        self, manifold: Manifold, dtype: Optional[Any] = None, **options: Any
     ) -> Callable[[Callable[..., Any]], Function]: ...
 
 
@@ -56,7 +56,7 @@ def decorator_factory(
     module: str, backend_class: str
 ) -> _ObjectiveFunctionDecorator:
     def decorator(
-        manifold: Manifold, dtype: Optional[Any] = None
+        manifold: Manifold, dtype: Optional[Any] = None, **options: Any
     ) -> Callable[[Callable[..., Any]], Function]:
         def inner(cost: Callable[..., Any]) -> Function:
             argspec = inspect.getfullargspec(cost)
@@ -76,11 +76,11 @@ def decorator_factory(
                 backend_class,
             )
             backend = (
-                backend_type(dtype=dtype)
+                backend_type(dtype=dtype, **options)
                 if dtype is not None
                 # by default use float64, which is fine for a function it only
                 # uses autodiff methods (which do not depend on realness)
-                else backend_type()
+                else backend_type(**options)
             )
             return Function(function=cost, manifold=manifold, backend=backend)
 

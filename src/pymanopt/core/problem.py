@@ -15,10 +15,11 @@ class Problem:
         cost: A callable decorated with a decorator from
             :mod:`pymanopt.functions` which takes a point on a manifold and
             returns a real scalar.
-            If any decorator other than :func:`pymanopt.function.numpy` is
-            used, the gradient and Hessian functions are generated
-            automatically if needed and no ``{euclidean,riemannian}_gradient``
-            or ``{euclidean,riemannian}_hessian`` arguments are provided.
+            The gradient and Hessian functions are generated automatically
+            if needed and no ``{euclidean,riemannian}_gradient`` or
+            ``{euclidean,riemannian}_hessian`` arguments are provided, unless
+            the cost is decorated with :func:`pymanopt.function.numpy`
+            without ``autodiff=True``.
         euclidean_gradient: The Euclidean gradient, i.e., the gradient of the
             cost function in the typical sense in the ambient space.
             The returned value need not belong to the tangent space of

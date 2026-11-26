@@ -4,6 +4,8 @@ from numpy import testing as np_testing
 
 import pymanopt
 from pymanopt.backends.numpy_backend import NumpyBackend
+from pymanopt.manifolds import Sphere
+from pymanopt.optimizers import TrustRegions
 
 from . import _backend_tests
 
@@ -45,3 +47,163 @@ class TestNumpyBackend:
             self.cost.get_gradient_operator()
         with pytest.raises(NotImplementedError):
             self.cost.get_hessian_operator()
+
+
+def test_optimizer_with_autodiff():
+    matrix = np.diag([3.0, 2.0, 1.0])
+    manifold = Sphere(3)
+
+    @pymanopt.function.numpy(manifold, autodiff=True)
+    def cost(x):
+        return -x @ matrix @ x
+
+    problem = pymanopt.Problem(manifold, cost)
+    result = TrustRegions(verbosity=0).run(problem)
+    np_testing.assert_allclose(np.abs(result.point), [1, 0, 0], atol=1e-6)
+
+
+class TestUnaryFunction(_backend_tests.TestUnaryFunction):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(x):
+            return np.sum(x**2)
+
+        self.cost = cost
+
+
+class TestUnaryComplexFunction(_backend_tests.TestUnaryComplexFunction):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout,
+            backend=NumpyBackend(np.complex128),
+            is_complex=True,
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(x):
+            return np.real(np.sum(x**2))
+
+        self.cost = cost
+
+
+class TestUnaryVarargFunction(_backend_tests.TestUnaryFunction):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(*x):
+            (x,) = x
+            return np.sum(x**2)
+
+        self.cost = cost
+
+
+class TestNaryFunction(_backend_tests.TestNaryFunction):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(x, y):
+            return x @ y
+
+        self.cost = cost
+
+
+class TestNaryVarargFunction(_backend_tests.TestNaryFunction):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(*args):
+            return np.dot(*args)
+
+        self.cost = cost
+
+
+class TestNaryParameterGrouping(_backend_tests.TestNaryParameterGrouping):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(x, y, z):
+            return np.sum(x**2 + y + z**3)
+
+        self.cost = cost
+
+
+class TestVector(_backend_tests.TestVector):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(X):
+            return np.exp(np.sum(X**2))
+
+        self.cost = cost
+
+
+class TestMatrix(_backend_tests.TestMatrix):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(X):
+            return np.exp(np.sum(X**2))
+
+        self.cost = cost
+
+
+class TestTensor3(_backend_tests.TestTensor3):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(X):
+            return np.exp(np.sum(X**2))
+
+        self.cost = cost
+
+
+class TestMixed(_backend_tests.TestMixed):
+    @pytest.fixture(autouse=True)
+    def setup(self, pre_setup):
+        self.manifold = _backend_tests.manifold_factory(
+            point_layout=self.point_layout, backend=NumpyBackend()
+        )
+
+        @pymanopt.function.numpy(self.manifold, autodiff=True)
+        def cost(x, y, z):
+            return (
+                np.exp(np.sum(x**2))
+                + np.exp(np.sum(y**2))
+                + np.exp(np.sum(z**2))
+            )
+
+        self.cost = cost

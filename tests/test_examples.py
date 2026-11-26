@@ -1,4 +1,6 @@
+import numpy as np
 import pytest
+from numpy import testing as np_testing
 
 from examples import (
     closest_unit_norm_column_approximation,
@@ -14,6 +16,18 @@ from examples import (
     rank_k_correlation_matrix_approximation,
 )
 from examples.advanced import check_gradient, check_hessian, check_retraction
+from pymanopt.backends.numpy_backend import NumpyBackend
+from pymanopt.manifolds import (
+    ComplexGrassmann,
+    Euclidean,
+    FixedRankEmbedded,
+    Grassmann,
+    Oblique,
+    PSDFixedRank,
+    SpecialOrthogonalGroup,
+    Sphere,
+    Stiefel,
+)
 
 SUPPORTED_BACKENDS = {"numpy", "autograd", "jax", "pytorch", "tensorflow"}
 
@@ -168,3 +182,96 @@ class TestExamples:
     )
     def test_check_retraction(self, backend):
         check_retraction.run(backend)
+
+
+rng = np.random.default_rng(0)
+real, complex_ = NumpyBackend(), NumpyBackend(np.complex128)
+symmetric = rng.normal(size=(6, 6))
+symmetric += symmetric.T
+hermitian = rng.normal(size=(6, 6)) + 1j * rng.normal(size=(6, 6))
+hermitian += hermitian.conj().T
+
+
+WRONG_DERIVATIVES = {
+    (pca, 2): "The handwritten Hessian of the example is wrong",
+    (rank_k_correlation_matrix_approximation, 1): (
+        "The handwritten gradient of the example is halved"
+    ),
+}
+
+
+@pytest.mark.parametrize("order", [1, 2], ids=["gradient", "hessian"])
+@pytest.mark.parametrize(
+    "example, manifold, data",
+    [
+        (
+            closest_unit_norm_column_approximation,
+            Oblique(5, 8, backend=real),
+            [rng.normal(size=(5, 8))],
+        ),
+        (dominant_eigenvector, Sphere(6, backend=real), [symmetric]),
+        (
+            dominant_invariant_complex_subspace,
+            ComplexGrassmann(6, 2, backend=complex_),
+            [hermitian],
+        ),
+        (
+            dominant_invariant_subspace,
+            Grassmann(6, 2, backend=real),
+            [symmetric],
+        ),
+        (
+            low_rank_matrix_approximation,
+            FixedRankEmbedded(5, 4, 2, backend=real),
+            [rng.normal(size=(5, 4))],
+        ),
+        (
+            low_rank_psd_matrix_approximation,
+            PSDFixedRank(6, 2, backend=real),
+            [symmetric],
+        ),
+        (
+            multiple_linear_regression,
+            Euclidean(3, backend=real),
+            [rng.normal(size=(20, 3)), rng.normal(size=20)],
+        ),
+        (
+            optimal_rotations,
+            SpecialOrthogonalGroup(3, k=4, backend=real),
+            [rng.normal(size=(4, 3, 3))],
+        ),
+        (pca, Stiefel(3, 2, backend=real), [rng.normal(size=(20, 3))]),
+        (
+            rank_k_correlation_matrix_approximation,
+            Oblique(3, 6, backend=real),
+            [symmetric],
+        ),
+    ],
+    ids=lambda value: getattr(value, "__name__", None),
+)
+def test_numpy_autodiff_matches_handwritten_derivatives(
+    example, manifold, data, order, request
+):
+    cost, *derivatives = example.create_cost_and_derivates(
+        manifold, *data, "numpy"
+    )
+    if order > len(derivatives):
+        pytest.skip("The example has no handwritten Hessian")
+    if (example, order) in WRONG_DERIVATIVES:
+        request.applymarker(
+            pytest.mark.xfail(
+                reason=WRONG_DERIVATIVES[example, order], strict=True
+            )
+        )
+    n = manifold.num_values
+    point = manifold.random_point()
+    args = list(point) if n > 1 else [point]
+    backend = NumpyBackend(autodiff=True)
+    if order == 1:
+        actual = backend.generate_gradient_operator(cost, n)(*args)
+    else:
+        args.append(manifold.random_tangent_vector(point))
+        actual = backend.generate_hessian_operator(cost, n)(*args)
+    expected = derivatives[order - 1](*args)
+    for a, e in zip(actual, expected) if n > 1 else [(actual, expected)]:
+        np_testing.assert_allclose(a, e)

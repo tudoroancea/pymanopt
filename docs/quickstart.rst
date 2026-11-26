@@ -25,6 +25,9 @@ strongly recommend, you need to setup your cost functions using either
 `JAX <https://jax.readthedocs.io/en/latest/>`_,
 `TensorFlow <https://www.tensorflow.org>`_ or
 `PyTorch <http://www.pytorch.org/>`_.
+Cost functions written in plain NumPy can also be differentiated without any
+additional dependency by decorating them with
+``pymanopt.function.numpy(manifold, autodiff=True)`` (see :doc:`autodiff`).
 If you are unfamiliar with these packages and you are unsure which to go for,
 we suggest to start with Autograd.
 Autograd wraps thinly around NumPy, and is very simple to use, particularly if

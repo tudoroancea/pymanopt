@@ -6,16 +6,20 @@ import packaging.version as pv
 import scipy
 import scipy.linalg
 
+from pymanopt.backends import _numpy_autodiff
 from pymanopt.backends.backend import Backend, DTypePrecision, TupleOrList
-
-
-def _raise_not_implemented_error(*args, **kwargs):
-    raise NotImplementedError(
-        "No autodiff support available for the NumPy backend"
-    )
+from pymanopt.tools import unpack_singleton_sequence_return_value
 
 
 class NumpyBackend(Backend):
+    """Backend for NumPy arrays.
+
+    Args:
+        dtype: The dtype of the arrays.
+        autodiff: Whether to compute gradients and Hessians of cost
+            functions written in NumPy automatically.
+    """
+
     ##########################################################################
     # Common attributes, properties and methods
     ##########################################################################
@@ -26,7 +30,7 @@ class NumpyBackend(Backend):
     # np.dtype("complex128") and others are not.
     _dtype: type
 
-    def __init__(self, dtype: type = np.float64):
+    def __init__(self, dtype: type = np.float64, autodiff: bool = False):
         if dtype not in {
             np.float32,
             np.float64,
@@ -35,6 +39,7 @@ class NumpyBackend(Backend):
         }:
             raise ValueError(f"dtype {dtype} is not supported")
         self._dtype = dtype
+        self._autodiff = autodiff
 
     @property
     def dtype(self):
@@ -67,26 +72,46 @@ class NumpyBackend(Backend):
         if self.is_dtype_real:
             return self
         if self.dtype == np.complex64:
-            return NumpyBackend(dtype=np.float32)
+            return NumpyBackend(np.float32, self._autodiff)
         if self.dtype == np.complex128:
-            return NumpyBackend(dtype=np.float64)
+            return NumpyBackend(np.float64, self._autodiff)
         raise ValueError(f"dtype {self.dtype} is not supported")
 
     def to_complex_backend(self) -> "NumpyBackend":
         if not self.is_dtype_real:
             return self
         if self.dtype == np.float32:
-            return NumpyBackend(dtype=np.complex64)
+            return NumpyBackend(np.complex64, self._autodiff)
         if self.dtype == np.float64:
-            return NumpyBackend(dtype=np.complex128)
+            return NumpyBackend(np.complex128, self._autodiff)
         raise ValueError(f"dtype {self.dtype} is not supported")
 
     ##############################################################################
     # Autodiff methods
     ##############################################################################
 
-    generate_gradient_operator = _raise_not_implemented_error
-    generate_hessian_operator = _raise_not_implemented_error
+    def generate_gradient_operator(self, function, num_arguments):
+        return self._generate_operator(
+            _numpy_autodiff.gradient, function, num_arguments
+        )
+
+    def generate_hessian_operator(self, function, num_arguments):
+        return self._generate_operator(
+            _numpy_autodiff.hessian_vector_product, function, num_arguments
+        )
+
+    def _generate_operator(self, generate, function, num_arguments):
+        if not self._autodiff:
+            raise NotImplementedError(
+                "The NumPy backend only differentiates cost functions "
+                "decorated with pymanopt.function.numpy(manifold, "
+                "autodiff=True). Otherwise pass the gradient and Hessian to "
+                "Problem."
+            )
+        operator = generate(function)
+        if num_arguments == 1:
+            return unpack_singleton_sequence_return_value(operator)
+        return operator
 
     ##############################################################################
     # Numerics functions
